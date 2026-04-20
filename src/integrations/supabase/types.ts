@@ -14,7 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      orders: {
+        Row: {
+          attachment_names: string[] | null
+          created_at: string
+          currency: string
+          customer_email: string | null
+          customer_name: string | null
+          email_body: string | null
+          email_subject: string | null
+          extracted_items: Json
+          id: string
+          matched_items: Json
+          notes: string | null
+          quotation_file_path: string | null
+          quotation_number: string
+          status: string
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          total: number
+          unmatched_skus: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          attachment_names?: string[] | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          email_body?: string | null
+          email_subject?: string | null
+          extracted_items?: Json
+          id?: string
+          matched_items?: Json
+          notes?: string | null
+          quotation_file_path?: string | null
+          quotation_number: string
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          unmatched_skus?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          attachment_names?: string[] | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          email_body?: string | null
+          email_subject?: string | null
+          extracted_items?: Json
+          id?: string
+          matched_items?: Json
+          notes?: string | null
+          quotation_file_path?: string | null
+          quotation_number?: string
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          unmatched_skus?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      price_list: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string
+          id: string
+          sku: string
+          unit: string | null
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description: string
+          id?: string
+          sku: string
+          unit?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string
+          id?: string
+          sku?: string
+          unit?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
