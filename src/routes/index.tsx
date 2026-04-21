@@ -408,13 +408,32 @@ function NewOrderPage() {
                   Review and edit before generating the Excel file.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="space-y-1">
                   <Label className="text-xs">Customer name</Label>
                   <Input
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="Client Co."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Default Margin %</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={defaultMargin}
+                    onChange={(e) => {
+                      const m = Number(e.target.value);
+                      setDefaultMargin(m);
+                      setLines((ls) =>
+                        ls.map((l) => ({
+                          ...l,
+                          margin_pct: m,
+                          line_total: computeLineTotal(l.quantity, l.unit_price, m, l.discount_pct),
+                        })),
+                      );
+                    }}
                   />
                 </div>
                 <div className="space-y-1">
@@ -455,9 +474,12 @@ function NewOrderPage() {
                   <TableRow>
                     <TableHead>SKU</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead className="w-24">Qty</TableHead>
-                    <TableHead className="w-28 text-right">Unit Price</TableHead>
-                    <TableHead className="w-28 text-right">Line Total</TableHead>
+                    <TableHead className="w-20">Qty</TableHead>
+                    <TableHead className="w-24 text-right">Cost</TableHead>
+                    <TableHead className="w-20 text-right">Margin %</TableHead>
+                    <TableHead className="w-24 text-right">Sell</TableHead>
+                    <TableHead className="w-20 text-right">Disc %</TableHead>
+                    <TableHead className="w-24 text-right">Total</TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -472,7 +494,7 @@ function NewOrderPage() {
                           min="1"
                           value={l.quantity}
                           onChange={(e) => updateQty(i, Number(e.target.value))}
-                          className="h-8 w-20"
+                          className="h-8 w-16"
                         />
                       </TableCell>
                       <TableCell>
@@ -481,10 +503,31 @@ function NewOrderPage() {
                           step="0.01"
                           value={l.unit_price}
                           onChange={(e) => updatePrice(i, Number(e.target.value))}
-                          className="h-8 w-24 text-right"
+                          className="h-8 w-20 text-right"
                         />
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={l.margin_pct}
+                          onChange={(e) => updateMargin(i, Number(e.target.value))}
+                          className="h-8 w-16 text-right"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {sellingPrice(l.unit_price, l.margin_pct).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={l.discount_pct}
+                          onChange={(e) => updateDiscount(i, Number(e.target.value))}
+                          className="h-8 w-16 text-right"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-medium">
                         {l.line_total.toFixed(2)}
                       </TableCell>
                       <TableCell>
