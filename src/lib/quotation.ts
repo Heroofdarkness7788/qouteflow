@@ -129,11 +129,12 @@ export function buildQuotationWorkbook(data: QuotationData): ArrayBuffer {
  * Columns based on Zoho's standard estimate import template.
  */
 export function buildZohoEstimateCSV(data: QuotationData): string {
+  // Columns mapped to Zoho Books' standard Estimate import fields.
+  // Reference: Zoho Books Estimate import template field names.
   const headers = [
     "Estimate Number",
     "Estimate Date",
     "Customer Name",
-    "Customer Email",
     "Currency Code",
     "Item Name",
     "SKU",
@@ -141,10 +142,8 @@ export function buildZohoEstimateCSV(data: QuotationData): string {
     "Quantity",
     "Usage unit",
     "Item Price",
-    "Discount",
-    "Discount Type",
-    "Item Tax %",
-    "Item Total",
+    "Item Discount",
+    "Item Discount Type",
     "Notes",
   ];
 
@@ -165,7 +164,6 @@ export function buildZohoEstimateCSV(data: QuotationData): string {
       data.quotation_number,
       data.date,
       data.customer_name || "",
-      data.customer_email || "",
       data.currency,
       l.description,
       l.sku,
@@ -174,9 +172,8 @@ export function buildZohoEstimateCSV(data: QuotationData): string {
       l.unit ?? "pcs",
       String(sell),
       String(l.discount_pct || 0),
-      "percentage",
-      idx === 0 ? String(data.tax_rate || 0) : "0",
-      String(l.line_total),
+      // Zoho expects exactly "Percentage" or "Amount" (capitalized).
+      "Percentage",
       idx === 0 ? data.notes ?? "" : "",
     ].map(escape));
   });
