@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useState, useCallback, useMemo } from "react";
-import { useDropzone } from "react-dropzone";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,6 +76,9 @@ function NewOrderPage() {
 
   const extract = useServerFn(extractOrderFromEmail);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+
   const onDrop = useCallback(async (files: File[]) => {
     const newOnes: Attachment[] = [];
     for (const f of files) {
@@ -89,11 +91,6 @@ function NewOrderPage() {
     }
     setAttachments((a) => [...a, ...newOnes].slice(0, 5));
   }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    multiple: true,
-  });
 
   const subtotal = useMemo(
     () => lines.reduce((s, l) => s + l.line_total, 0),
@@ -354,12 +351,31 @@ function NewOrderPage() {
             <div>
               <Label className="mb-1.5 block">Attachments (PDF, Excel, images — optional)</Label>
               <div
-                {...getRootProps()}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragActive(true);
+                }}
+                onDragLeave={() => setIsDragActive(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragActive(false);
+                  onDrop(Array.from(e.dataTransfer.files));
+                }}
                 className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed p-3 transition-colors ${
                   isDragActive ? "border-primary bg-accent" : "border-border"
                 }`}
               >
-                <input {...getInputProps()} />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    onDrop(Array.from(e.target.files ?? []));
+                    e.target.value = "";
+                  }}
+                />
                 <Upload className="h-5 w-5 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
                   Drop files or click — up to 5 files, 8MB each
