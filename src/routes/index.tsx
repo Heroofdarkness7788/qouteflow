@@ -26,6 +26,9 @@ import {
 } from "@/utils/orders.functions";
 import {
   buildQuotationWorkbook,
+  buildZohoEstimateCSV,
+  computeLineTotal,
+  sellingPrice,
   type QuotationLine,
 } from "@/lib/quotation";
 
@@ -63,6 +66,7 @@ function NewOrderPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [taxRate, setTaxRate] = useState(0);
+  const [defaultMargin, setDefaultMargin] = useState(0);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,23 +102,21 @@ function NewOrderPage() {
   const taxAmount = useMemo(() => (subtotal * taxRate) / 100, [subtotal, taxRate]);
   const total = subtotal + taxAmount;
 
+  const recalc = (l: QuotationLine): QuotationLine => ({
+    ...l,
+    line_total: computeLineTotal(l.quantity, l.unit_price, l.margin_pct, l.discount_pct),
+  });
   const updateQty = (idx: number, qty: number) => {
-    setLines((ls) =>
-      ls.map((l, i) =>
-        i === idx
-          ? { ...l, quantity: qty, line_total: +(qty * l.unit_price).toFixed(2) }
-          : l,
-      ),
-    );
+    setLines((ls) => ls.map((l, i) => (i === idx ? recalc({ ...l, quantity: qty }) : l)));
   };
   const updatePrice = (idx: number, price: number) => {
-    setLines((ls) =>
-      ls.map((l, i) =>
-        i === idx
-          ? { ...l, unit_price: price, line_total: +(l.quantity * price).toFixed(2) }
-          : l,
-      ),
-    );
+    setLines((ls) => ls.map((l, i) => (i === idx ? recalc({ ...l, unit_price: price }) : l)));
+  };
+  const updateMargin = (idx: number, m: number) => {
+    setLines((ls) => ls.map((l, i) => (i === idx ? recalc({ ...l, margin_pct: m }) : l)));
+  };
+  const updateDiscount = (idx: number, d: number) => {
+    setLines((ls) => ls.map((l, i) => (i === idx ? recalc({ ...l, discount_pct: d }) : l)));
   };
   const removeLine = (idx: number) =>
     setLines((ls) => ls.filter((_, i) => i !== idx));
@@ -172,13 +174,16 @@ function NewOrderPage() {
           used.add(sku);
           continue;
         }
+        const up = Number(p.unit_price);
         matched.push({
           sku,
           description: p.description,
           quantity: item.quantity,
-          unit_price: Number(p.unit_price),
+          unit_price: up,
+          margin_pct: defaultMargin,
+          discount_pct: 0,
           unit: p.unit ?? "pcs",
-          line_total: +(item.quantity * Number(p.unit_price)).toFixed(2),
+          line_total: computeLineTotal(item.quantity, up, defaultMargin, 0),
         });
       }
       if (matched[0]?.sku && priceRows?.[0]?.currency) {
