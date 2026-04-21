@@ -217,7 +217,7 @@ function NewOrderPage() {
     setSaving(true);
     try {
       const quotation_number = generateQuotationNumber();
-      const buf = buildQuotationWorkbook({
+      const quotationData = {
         quotation_number,
         date: new Date().toISOString().slice(0, 10),
         customer_name: customerName,
@@ -230,21 +230,30 @@ function NewOrderPage() {
         total: +total.toFixed(2),
         notes,
         unmatched_skus: unmatched,
-      });
+      };
+      const buf = buildQuotationWorkbook(quotationData);
+      const csv = buildZohoEstimateCSV(quotationData);
 
-      const blob = new Blob([buf], {
+      const xlsxBlob = new Blob([buf], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
+      const csvBlob = new Blob([csv], { type: "text/csv;charset=utf-8" });
 
       const path = `${new Date().getFullYear()}/${quotation_number}.xlsx`;
       const { error: upErr } = await supabase.storage
         .from("quotations")
-        .upload(path, blob, {
+        .upload(path, xlsxBlob, {
           contentType:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           upsert: true,
         });
       if (upErr) throw upErr;
+
+      const csvPath = `${new Date().getFullYear()}/${quotation_number}.csv`;
+      await supabase.storage.from("quotations").upload(csvPath, csvBlob, {
+        contentType: "text/csv;charset=utf-8",
+        upsert: true,
+      });
 
       const { error: insErr } = await supabase.from("orders").insert({
         quotation_number,
@@ -267,13 +276,16 @@ function NewOrderPage() {
       });
       if (insErr) throw insErr;
 
-      // Trigger download
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${quotation_number}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const triggerDownload = (blob: Blob, filename: string) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      triggerDownload(xlsxBlob, `${quotation_number}.xlsx`);
+      triggerDownload(csvBlob, `${quotation_number}-zoho.csv`);
 
       toast.success(`Quotation ${quotation_number} saved`);
       // Reset for next order
