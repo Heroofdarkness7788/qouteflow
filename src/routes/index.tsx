@@ -26,6 +26,9 @@ import {
 } from "@/utils/orders.functions";
 import {
   buildQuotationWorkbook,
+  buildZohoEstimateCSV,
+  computeLineTotal,
+  sellingPrice,
   type QuotationLine,
 } from "@/lib/quotation";
 
@@ -63,6 +66,7 @@ function NewOrderPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [taxRate, setTaxRate] = useState(0);
+  const [defaultMargin, setDefaultMargin] = useState(0);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,23 +102,21 @@ function NewOrderPage() {
   const taxAmount = useMemo(() => (subtotal * taxRate) / 100, [subtotal, taxRate]);
   const total = subtotal + taxAmount;
 
+  const recalc = (l: QuotationLine): QuotationLine => ({
+    ...l,
+    line_total: computeLineTotal(l.quantity, l.unit_price, l.margin_pct, l.discount_pct),
+  });
   const updateQty = (idx: number, qty: number) => {
-    setLines((ls) =>
-      ls.map((l, i) =>
-        i === idx
-          ? { ...l, quantity: qty, line_total: +(qty * l.unit_price).toFixed(2) }
-          : l,
-      ),
-    );
+    setLines((ls) => ls.map((l, i) => (i === idx ? recalc({ ...l, quantity: qty }) : l)));
   };
   const updatePrice = (idx: number, price: number) => {
-    setLines((ls) =>
-      ls.map((l, i) =>
-        i === idx
-          ? { ...l, unit_price: price, line_total: +(l.quantity * price).toFixed(2) }
-          : l,
-      ),
-    );
+    setLines((ls) => ls.map((l, i) => (i === idx ? recalc({ ...l, unit_price: price }) : l)));
+  };
+  const updateMargin = (idx: number, m: number) => {
+    setLines((ls) => ls.map((l, i) => (i === idx ? recalc({ ...l, margin_pct: m }) : l)));
+  };
+  const updateDiscount = (idx: number, d: number) => {
+    setLines((ls) => ls.map((l, i) => (i === idx ? recalc({ ...l, discount_pct: d }) : l)));
   };
   const removeLine = (idx: number) =>
     setLines((ls) => ls.filter((_, i) => i !== idx));
@@ -172,13 +174,16 @@ function NewOrderPage() {
           used.add(sku);
           continue;
         }
+        const up = Number(p.unit_price);
         matched.push({
           sku,
           description: p.description,
           quantity: item.quantity,
-          unit_price: Number(p.unit_price),
+          unit_price: up,
+          margin_pct: defaultMargin,
+          discount_pct: 0,
           unit: p.unit ?? "pcs",
-          line_total: +(item.quantity * Number(p.unit_price)).toFixed(2),
+          line_total: computeLineTotal(item.quantity, up, defaultMargin, 0),
         });
       }
       if (matched[0]?.sku && priceRows?.[0]?.currency) {
@@ -212,7 +217,7 @@ function NewOrderPage() {
     setSaving(true);
     try {
       const quotation_number = generateQuotationNumber();
-      const buf = buildQuotationWorkbook({
+      const quotationData = {
         quotation_number,
         date: new Date().toISOString().slice(0, 10),
         customer_name: customerName,
@@ -225,21 +230,30 @@ function NewOrderPage() {
         total: +total.toFixed(2),
         notes,
         unmatched_skus: unmatched,
-      });
+      };
+      const buf = buildQuotationWorkbook(quotationData);
+      const csv = buildZohoEstimateCSV(quotationData);
 
-      const blob = new Blob([buf], {
+      const xlsxBlob = new Blob([buf], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
+      const csvBlob = new Blob([csv], { type: "text/csv;charset=utf-8" });
 
       const path = `${new Date().getFullYear()}/${quotation_number}.xlsx`;
       const { error: upErr } = await supabase.storage
         .from("quotations")
-        .upload(path, blob, {
+        .upload(path, xlsxBlob, {
           contentType:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           upsert: true,
         });
       if (upErr) throw upErr;
+
+      const csvPath = `${new Date().getFullYear()}/${quotation_number}.csv`;
+      await supabase.storage.from("quotations").upload(csvPath, csvBlob, {
+        contentType: "text/csv;charset=utf-8",
+        upsert: true,
+      });
 
       const { error: insErr } = await supabase.from("orders").insert({
         quotation_number,
@@ -262,13 +276,16 @@ function NewOrderPage() {
       });
       if (insErr) throw insErr;
 
-      // Trigger download
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${quotation_number}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const triggerDownload = (blob: Blob, filename: string) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      triggerDownload(xlsxBlob, `${quotation_number}.xlsx`);
+      triggerDownload(csvBlob, `${quotation_number}-zoho.csv`);
 
       toast.success(`Quotation ${quotation_number} saved`);
       // Reset for next order
@@ -391,13 +408,32 @@ function NewOrderPage() {
                   Review and edit before generating the Excel file.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="space-y-1">
                   <Label className="text-xs">Customer name</Label>
                   <Input
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="Client Co."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Default Margin %</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={defaultMargin}
+                    onChange={(e) => {
+                      const m = Number(e.target.value);
+                      setDefaultMargin(m);
+                      setLines((ls) =>
+                        ls.map((l) => ({
+                          ...l,
+                          margin_pct: m,
+                          line_total: computeLineTotal(l.quantity, l.unit_price, m, l.discount_pct),
+                        })),
+                      );
+                    }}
                   />
                 </div>
                 <div className="space-y-1">
@@ -438,9 +474,12 @@ function NewOrderPage() {
                   <TableRow>
                     <TableHead>SKU</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead className="w-24">Qty</TableHead>
-                    <TableHead className="w-28 text-right">Unit Price</TableHead>
-                    <TableHead className="w-28 text-right">Line Total</TableHead>
+                    <TableHead className="w-20">Qty</TableHead>
+                    <TableHead className="w-24 text-right">Cost</TableHead>
+                    <TableHead className="w-20 text-right">Margin %</TableHead>
+                    <TableHead className="w-24 text-right">Sell</TableHead>
+                    <TableHead className="w-20 text-right">Disc %</TableHead>
+                    <TableHead className="w-24 text-right">Total</TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -455,7 +494,7 @@ function NewOrderPage() {
                           min="1"
                           value={l.quantity}
                           onChange={(e) => updateQty(i, Number(e.target.value))}
-                          className="h-8 w-20"
+                          className="h-8 w-16"
                         />
                       </TableCell>
                       <TableCell>
@@ -464,10 +503,31 @@ function NewOrderPage() {
                           step="0.01"
                           value={l.unit_price}
                           onChange={(e) => updatePrice(i, Number(e.target.value))}
-                          className="h-8 w-24 text-right"
+                          className="h-8 w-20 text-right"
                         />
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={l.margin_pct}
+                          onChange={(e) => updateMargin(i, Number(e.target.value))}
+                          className="h-8 w-16 text-right"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {sellingPrice(l.unit_price, l.margin_pct).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={l.discount_pct}
+                          onChange={(e) => updateDiscount(i, Number(e.target.value))}
+                          className="h-8 w-16 text-right"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-medium">
                         {l.line_total.toFixed(2)}
                       </TableCell>
                       <TableCell>
@@ -520,7 +580,7 @@ function NewOrderPage() {
                     <Download className="mr-2 h-4 w-4" />
                   </>
                 )}
-                {saving ? "Saving..." : "Save & download Excel"}
+                {saving ? "Saving..." : "Save & download (Excel + Zoho CSV)"}
               </Button>
             </div>
           </Card>
