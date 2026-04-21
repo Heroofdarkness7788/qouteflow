@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useEffect, useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { parsePriceListFile } from "@/lib/quotation";
 import { Button } from "@/components/ui/button";
@@ -50,6 +49,9 @@ function PriceListPage() {
     load();
   }, [load]);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+
   const onDrop = useCallback(
     async (files: File[]) => {
       const file = files[0];
@@ -62,7 +64,6 @@ function PriceListPage() {
           toast.error("No rows detected. Make sure the sheet has SKU and Price columns.");
           return;
         }
-        // Upsert in chunks
         const payload = items.map((i) => ({
           sku: i.sku.toUpperCase(),
           description: i.description,
@@ -84,16 +85,6 @@ function PriceListPage() {
     },
     [load],
   );
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-      "application/vnd.ms-excel": [".xls"],
-      "text/csv": [".csv"],
-    },
-    multiple: false,
-  });
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("price_list").delete().eq("id", id);
@@ -134,12 +125,31 @@ function PriceListPage() {
         </div>
 
         <Card
-          {...getRootProps()}
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragActive(true);
+          }}
+          onDragLeave={() => setIsDragActive(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragActive(false);
+            onDrop(Array.from(e.dataTransfer.files));
+          }}
           className={`cursor-pointer border-2 border-dashed p-8 text-center transition-colors ${
             isDragActive ? "border-primary bg-accent" : "border-border"
           }`}
         >
-          <input {...getInputProps()} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => {
+              onDrop(Array.from(e.target.files ?? []));
+              e.target.value = "";
+            }}
+          />
           <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-medium">
             {loading
