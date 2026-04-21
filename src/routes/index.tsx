@@ -580,7 +580,7 @@ function NewOrderPage() {
                     <Download className="mr-2 h-4 w-4" />
                   </>
                 )}
-                {saving ? "Saving..." : "Save & download Excel"}
+                {saving ? "Saving..." : "Save & download (Excel + Zoho CSV)"}
               </Button>
             </div>
           </Card>
