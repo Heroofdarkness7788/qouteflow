@@ -3,34 +3,58 @@ import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-// Auth middleware: require a valid Supabase session AND that the user is on the allow-list.
-const requireTeamMember = createMiddleware({ type: "function" }).server(async ({ next }) => {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    throw new Response("Server misconfigured", { status: 500 });
-  }
-  const request = getRequest();
-  const authHeader = request?.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Response("Unauthorized", { status: 401 });
-  }
-  const token = authHeader.slice("Bearer ".length);
-  const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+// Auth middleware: forward Supabase access token from client, then verify
+// on the server AND that the user is on the allow-list.
+const requireTeamMember = createMiddleware({ type: "function" })
+  .client(async ({ next }) => {
+    if (typeof window === "undefined") return next();
+    // Read token directly from supabase-js localStorage (cheaper than dynamic import)
+    let token: string | null = null;
+    try {
+      // Find any sb-*-auth-token key
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            token = parsed?.access_token ?? null;
+          }
+          break;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return next(token ? { headers: { Authorization: `Bearer ${token}` } } : {});
+  })
+  .server(async ({ next }) => {
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+      throw new Response("Server misconfigured", { status: 500 });
+    }
+    const request = getRequest();
+    const authHeader = request?.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new Response("Unauthorized", { status: 401 });
+    }
+    const token = authHeader.slice("Bearer ".length);
+    const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+    });
+    const { data: claims, error } = await sb.auth.getClaims(token);
+    if (error || !claims?.claims?.sub) {
+      throw new Response("Unauthorized", { status: 401 });
+    }
+    // is_team_member() is a SECURITY DEFINER function added in the latest migration; not in generated types yet.
+    const { data: allowed } = await (sb.rpc as unknown as (fn: string) => Promise<{ data: boolean | null }>)("is_team_member");
+    if (allowed !== true) {
+      throw new Response("Forbidden — not on team allow-list", { status: 403 });
+    }
+    return next({ context: { userId: claims.claims.sub as string } });
   });
-  const { data: claims, error } = await sb.auth.getClaims(token);
-  if (error || !claims?.claims?.sub) {
-    throw new Response("Unauthorized", { status: 401 });
-  }
-  // is_team_member() is a SECURITY DEFINER function added in the latest migration; not yet in generated types.
-  const { data: allowed } = await (sb.rpc as unknown as (fn: string) => Promise<{ data: boolean | null }>)("is_team_member");
-  if (allowed !== true) {
-    throw new Response("Forbidden — not on team allow-list", { status: 403 });
-  }
-  return next({ context: { userId: claims.claims.sub as string } });
-});
 
 const ExtractInput = z.object({
   email_subject: z.string().max(500).default(""),
