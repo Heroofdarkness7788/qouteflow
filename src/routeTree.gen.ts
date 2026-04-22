@@ -10,26 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
-import { Route as PriceListRouteImport } from './routes/price-list'
-import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
+import { Route as AuthenticatedPriceListRouteImport } from './routes/_authenticated/price-list'
+import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PriceListRoute = PriceListRouteImport.update({
-  id: '/price-list',
-  path: '/price-list',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrdersRoute = OrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -41,65 +31,72 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
   id: '/team',
   path: '/team',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedPriceListRoute = AuthenticatedPriceListRouteImport.update({
+  id: '/price-list',
+  path: '/price-list',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedOrdersRoute = AuthenticatedOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
-  '/orders': typeof OrdersRoute
-  '/price-list': typeof PriceListRoute
   '/signup': typeof SignupRoute
+  '/orders': typeof AuthenticatedOrdersRoute
+  '/price-list': typeof AuthenticatedPriceListRoute
   '/team': typeof AuthenticatedTeamRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/orders': typeof OrdersRoute
-  '/price-list': typeof PriceListRoute
   '/signup': typeof SignupRoute
+  '/orders': typeof AuthenticatedOrdersRoute
+  '/price-list': typeof AuthenticatedPriceListRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/orders': typeof OrdersRoute
-  '/price-list': typeof PriceListRoute
   '/signup': typeof SignupRoute
+  '/_authenticated/orders': typeof AuthenticatedOrdersRoute
+  '/_authenticated/price-list': typeof AuthenticatedPriceListRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/orders' | '/price-list' | '/signup' | '/team'
+  fullPaths: '/' | '/login' | '/signup' | '/orders' | '/price-list' | '/team'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/orders' | '/price-list' | '/signup' | '/team'
+  to: '/login' | '/signup' | '/orders' | '/price-list' | '/team' | '/'
   id:
     | '__root__'
-    | '/'
     | '/_authenticated'
     | '/login'
-    | '/orders'
-    | '/price-list'
     | '/signup'
+    | '/_authenticated/orders'
+    | '/_authenticated/price-list'
     | '/_authenticated/team'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
-  OrdersRoute: typeof OrdersRoute
-  PriceListRoute: typeof PriceListRoute
   SignupRoute: typeof SignupRoute
 }
 
@@ -110,20 +107,6 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/price-list': {
-      id: '/price-list'
-      path: '/price-list'
-      fullPath: '/price-list'
-      preLoaderRoute: typeof PriceListRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/orders': {
-      id: '/orders'
-      path: '/orders'
-      fullPath: '/orders'
-      preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -140,12 +123,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/team': {
       id: '/_authenticated/team'
@@ -154,15 +137,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTeamRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/price-list': {
+      id: '/_authenticated/price-list'
+      path: '/price-list'
+      fullPath: '/price-list'
+      preLoaderRoute: typeof AuthenticatedPriceListRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/orders': {
+      id: '/_authenticated/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof AuthenticatedOrdersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRoute
+  AuthenticatedPriceListRoute: typeof AuthenticatedPriceListRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedOrdersRoute: AuthenticatedOrdersRoute,
+  AuthenticatedPriceListRoute: AuthenticatedPriceListRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -170,11 +173,8 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
-  OrdersRoute: OrdersRoute,
-  PriceListRoute: PriceListRoute,
   SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport

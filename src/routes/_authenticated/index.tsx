@@ -31,7 +31,7 @@ import {
   type QuotationLine,
 } from "@/lib/quotation";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   component: NewOrderPage,
   head: () => ({
     meta: [

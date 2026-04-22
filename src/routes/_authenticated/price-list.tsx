@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 
-export const Route = createFileRoute("/price-list")({
+export const Route = createFileRoute("/_authenticated/price-list")({
   component: PriceListPage,
   head: () => ({ meta: [{ title: "Price List — QuoteFlow" }] }),
 });

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/orders")({
+export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
   head: () => ({ meta: [{ title: "Orders — QuoteFlow" }] }),
 });
