@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { friendlyError } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/signup")({
@@ -16,22 +16,33 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin },
       });
       if (error) throw error;
-      setSent(true);
+      if (data.session) {
+        toast.success("Account created");
+        navigate({ to: "/" });
+      } else {
+        // Fallback: sign in immediately if no session was returned
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
+        toast.success("Account created");
+        navigate({ to: "/" });
+      }
     } catch (e) {
       toast.error(friendlyError(e, "Sign up failed"));
     } finally {
@@ -50,24 +61,6 @@ function SignupPage() {
       toast.error(friendlyError(e, "Google sign-in failed"));
     }
   };
-
-  if (sent) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-md p-6 text-center">
-          <Mail className="mx-auto mb-3 h-10 w-10 text-primary" />
-          <h1 className="text-xl font-semibold">Check your email</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            We sent a verification link to <strong>{email}</strong>. Click it to
-            activate your account, then return here to sign in.
-          </p>
-          <Button asChild variant="outline" className="mt-6 w-full">
-            <Link to="/login">Back to sign in</Link>
-          </Button>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
