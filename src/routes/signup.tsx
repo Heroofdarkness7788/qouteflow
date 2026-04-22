@@ -76,7 +76,7 @@ function SignupPage() {
           <Logo />
           <h1 className="text-xl font-semibold">Create your account</h1>
           <p className="text-center text-sm text-muted-foreground">
-            Your email must already be on the team allow-list.
+            Sign up to start generating quotations.
           </p>
         </div>
         <form onSubmit={submit} className="space-y-4">
