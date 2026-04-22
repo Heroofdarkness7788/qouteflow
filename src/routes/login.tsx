@@ -55,7 +55,7 @@ function LoginPage() {
           <Logo />
           <h1 className="text-xl font-semibold">Sign in to QuoteFlow</h1>
           <p className="text-center text-sm text-muted-foreground">
-            Team-only access. Your email must be on the allow-list.
+            Welcome back.
           </p>
         </div>
         <form onSubmit={submit} className="space-y-4">

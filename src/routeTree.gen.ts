@@ -13,7 +13,6 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedPriceListRouteImport } from './routes/_authenticated/price-list'
 import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
 
@@ -36,11 +35,6 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
-  id: '/team',
-  path: '/team',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedPriceListRoute = AuthenticatedPriceListRouteImport.update({
   id: '/price-list',
   path: '/price-list',
@@ -58,14 +52,12 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/orders': typeof AuthenticatedOrdersRoute
   '/price-list': typeof AuthenticatedPriceListRoute
-  '/team': typeof AuthenticatedTeamRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/orders': typeof AuthenticatedOrdersRoute
   '/price-list': typeof AuthenticatedPriceListRoute
-  '/team': typeof AuthenticatedTeamRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -75,14 +67,13 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/orders': typeof AuthenticatedOrdersRoute
   '/_authenticated/price-list': typeof AuthenticatedPriceListRoute
-  '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup' | '/orders' | '/price-list' | '/team'
+  fullPaths: '/' | '/login' | '/signup' | '/orders' | '/price-list'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/signup' | '/orders' | '/price-list' | '/team' | '/'
+  to: '/login' | '/signup' | '/orders' | '/price-list' | '/'
   id:
     | '__root__'
     | '/_authenticated'
@@ -90,7 +81,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/orders'
     | '/_authenticated/price-list'
-    | '/_authenticated/team'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -130,13 +120,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/team': {
-      id: '/_authenticated/team'
-      path: '/team'
-      fullPath: '/team'
-      preLoaderRoute: typeof AuthenticatedTeamRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/price-list': {
       id: '/_authenticated/price-list'
       path: '/price-list'
@@ -157,14 +140,12 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRoute
   AuthenticatedPriceListRoute: typeof AuthenticatedPriceListRoute
-  AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOrdersRoute: AuthenticatedOrdersRoute,
   AuthenticatedPriceListRoute: AuthenticatedPriceListRoute,
-  AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
