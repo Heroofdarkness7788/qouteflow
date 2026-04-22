@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/auth-context";
 import { Sparkles, Upload, X, Download, Save, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
@@ -31,7 +32,7 @@ import {
   type QuotationLine,
 } from "@/lib/quotation";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   component: NewOrderPage,
   head: () => ({
     meta: [
@@ -193,7 +194,7 @@ function NewOrderPage() {
           (missing.length ? ` · ${missing.length} unmatched SKU` : ""),
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Extraction failed");
+      toast.error(friendlyError(e, "Extraction failed"));
     } finally {
       setExtracting(false);
     }
@@ -295,7 +296,7 @@ function NewOrderPage() {
       setNotes("");
       setAttachments([]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(friendlyError(e, "Save failed"));
     } finally {
       setSaving(false);
     }

@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/auth-context";
 
-export const Route = createFileRoute("/orders")({
+export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
   head: () => ({ meta: [{ title: "Orders — QuoteFlow" }] }),
 });
@@ -38,7 +39,7 @@ function OrdersPage() {
       )
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
-        if (error) toast.error(error.message);
+        if (error) toast.error(friendlyError(error, "Failed to load orders"));
         else setOrders((data ?? []) as Order[]);
       });
   }, []);
@@ -49,7 +50,7 @@ function OrdersPage() {
       .from("quotations")
       .createSignedUrl(o.quotation_file_path, 60);
     if (error || !data) {
-      toast.error(error?.message ?? "Download failed");
+      toast.error(friendlyError(error, "Download failed"));
       return;
     }
     window.open(data.signedUrl, "_blank");
