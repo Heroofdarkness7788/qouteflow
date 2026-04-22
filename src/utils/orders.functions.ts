@@ -1,5 +1,35 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createMiddleware } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+
+// Auth middleware: require a valid Supabase session AND that the user is on the allow-list.
+const requireTeamMember = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    throw new Response("Server misconfigured", { status: 500 });
+  }
+  const request = getRequest();
+  const authHeader = request?.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new Response("Unauthorized", { status: 401 });
+  }
+  const token = authHeader.slice("Bearer ".length);
+  const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+  });
+  const { data: claims, error } = await sb.auth.getClaims(token);
+  if (error || !claims?.claims?.sub) {
+    throw new Response("Unauthorized", { status: 401 });
+  }
+  const { data: allowed } = await sb.rpc("is_team_member");
+  if (allowed !== true) {
+    throw new Response("Forbidden — not on team allow-list", { status: 403 });
+  }
+  return next({ context: { userId: claims.claims.sub as string } });
+});
 
 const ExtractInput = z.object({
   email_subject: z.string().max(500).default(""),
@@ -31,6 +61,7 @@ export type ExtractResult = {
 };
 
 export const extractOrderFromEmail = createServerFn({ method: "POST" })
+  .middleware([requireTeamMember])
   .inputValidator((input: unknown) => ExtractInput.parse(input))
   .handler(async ({ data }): Promise<ExtractResult> => {
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
