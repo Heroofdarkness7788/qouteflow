@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Upload, Trash2, Plus } from "lucide-react";
+import { friendlyError } from "@/lib/auth-context";
 import {
   Table,
   TableBody,
@@ -41,7 +42,7 @@ function PriceListPage() {
       .from("price_list")
       .select("*")
       .order("sku");
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error, "Failed to load price list"));
     else setRows(data as Row[]);
   }, []);
 
@@ -78,7 +79,7 @@ function PriceListPage() {
         toast.success(`Imported ${items.length} items`);
         load();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Import failed");
+        toast.error(friendlyError(e, "Import failed"));
       } finally {
         setLoading(false);
       }
@@ -88,7 +89,7 @@ function PriceListPage() {
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("price_list").delete().eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error, "Delete failed"));
     else {
       setRows((r) => r.filter((x) => x.id !== id));
       toast.success("Deleted");
@@ -103,7 +104,7 @@ function PriceListPage() {
     const { error } = await supabase
       .from("price_list")
       .upsert({ sku: sku.toUpperCase(), description: desc, unit_price: price });
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error, "Could not add"));
     else load();
   };
 
