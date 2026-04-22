@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      allowed_emails: {
-        Row: {
-          added_by: string | null
-          created_at: string
-          email: string
-          id: string
-        }
-        Insert: {
-          added_by?: string | null
-          created_at?: string
-          email: string
-          id?: string
-        }
-        Update: {
-          added_by?: string | null
-          created_at?: string
-          email?: string
-          id?: string
-        }
-        Relationships: []
-      }
       orders: {
         Row: {
           attachment_names: string[] | null
@@ -142,7 +121,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_team_member: { Args: never; Returns: boolean }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
