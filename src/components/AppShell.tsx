@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Logo } from "./Logo";
-import { Inbox, ListChecks, Database, Users, LogOut } from "lucide-react";
+import { Inbox, ListChecks, Database, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { useAuth } from "@/lib/auth-context";
@@ -11,7 +11,6 @@ const nav = [
   { to: "/", label: "New Order", icon: Inbox },
   { to: "/orders", label: "Orders", icon: ListChecks },
   { to: "/price-list", label: "Price List", icon: Database },
-  { to: "/team", label: "Team", icon: Users },
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
