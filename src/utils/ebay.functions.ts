@@ -1,6 +1,52 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createMiddleware } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+// Forward Supabase token from client localStorage, then verify on server.
+const requireAuth = createMiddleware({ type: "function" })
+  .client(async ({ next }) => {
+    if (typeof window === "undefined") return next();
+    let token: string | null = null;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            token = parsed?.access_token ?? null;
+          }
+          break;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return next(token ? { headers: { Authorization: `Bearer ${token}` } } : {});
+  })
+  .server(async ({ next }) => {
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+      throw new Response("Server misconfigured", { status: 500 });
+    }
+    const request = getRequest();
+    const authHeader = request?.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new Response("Unauthorized", { status: 401 });
+    }
+    const token = authHeader.slice("Bearer ".length);
+    const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+    });
+    const { data: claims, error } = await sb.auth.getClaims(token);
+    if (error || !claims?.claims?.sub) {
+      throw new Response("Unauthorized", { status: 401 });
+    }
+    return next({ context: { userId: claims.claims.sub as string } });
+  });
 
 // Cache the OAuth token in module scope (per worker instance) to avoid
 // re-authenticating on every search. Token typically lasts ~2 hours.
@@ -66,7 +112,7 @@ const SearchInput = z.object({
 });
 
 export const searchEbayBestSellers = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) => SearchInput.parse(input))
   .handler(async ({ data }): Promise<EbayBestSeller[]> => {
     const token = await getEbayAccessToken();
@@ -172,7 +218,7 @@ export const searchEbayBestSellers = createServerFn({ method: "POST" })
     await Promise.all(workers);
 
     // Preserve original input order
-    const order = new Map(data.queries.map((q, i) => [q, i]));
+    const order = new Map<string, number>(data.queries.map((q: string, i: number) => [q, i]));
     results.sort((a, b) => (order.get(a.query) ?? 0) - (order.get(b.query) ?? 0));
     return results;
   });
