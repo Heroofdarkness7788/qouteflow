@@ -78,8 +78,11 @@ function NewOrderPage() {
   const [unmatched, setUnmatched] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [ebayResults, setEbayResults] = useState<Record<string, EbayBestSeller>>({});
+  const [ebayLoading, setEbayLoading] = useState(false);
 
   const extract = useServerFn(extractOrderFromEmail);
+  const ebaySearch = useServerFn(searchEbayBestSellers);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
