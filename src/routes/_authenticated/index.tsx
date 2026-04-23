@@ -527,6 +527,12 @@ function NewOrderPage() {
                     <TableHead className="w-24 text-right">Sell</TableHead>
                     <TableHead className="w-20 text-right">Disc %</TableHead>
                     <TableHead className="w-24 text-right">Total</TableHead>
+                    <TableHead className="w-56">
+                      eBay best seller
+                      {ebayLoading && (
+                        <Loader2 className="ml-1 inline h-3 w-3 animate-spin" />
+                      )}
+                    </TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
