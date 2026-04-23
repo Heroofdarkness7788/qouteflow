@@ -48,53 +48,6 @@ const requireAuth = createMiddleware({ type: "function" })
     return next({ context: { userId: claims.claims.sub as string } });
   });
 
-// Cache the OAuth token in module scope (per worker instance) to avoid
-// re-authenticating on every search. Token typically lasts ~2 hours.
-let cachedToken: { token: string; expiresAt: number } | null = null;
-
-async function getEbayAccessToken(): Promise<string> {
-  const now = Date.now();
-  if (cachedToken && cachedToken.expiresAt > now + 60_000) {
-    return cachedToken.token;
-  }
-
-  const clientId = process.env.EBAY_CLIENT_ID;
-  const clientSecret = process.env.EBAY_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error("eBay credentials not configured");
-  }
-
-  const basic = btoa(`${clientId}:${clientSecret}`);
-  const resp = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body:
-      "grant_type=client_credentials&scope=" +
-      encodeURIComponent("https://api.ebay.com/oauth/api_scope"),
-  });
-
-  if (!resp.ok) {
-    const text = await resp.text();
-    console.error("eBay OAuth failed:", resp.status, text);
-    throw new Error(
-      `eBay authentication failed (${resp.status}). Check EBAY_CLIENT_ID/EBAY_CLIENT_SECRET are valid Production keys.`,
-    );
-  }
-
-  const json = (await resp.json()) as {
-    access_token: string;
-    expires_in: number;
-  };
-  cachedToken = {
-    token: json.access_token,
-    expiresAt: now + json.expires_in * 1000,
-  };
-  return json.access_token;
-}
-
 export type EbayBestSeller = {
   query: string;
   title: string | null;
@@ -111,49 +64,121 @@ const SearchInput = z.object({
   queries: z.array(z.string().min(1).max(200)).min(1).max(50),
 });
 
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+
+function parseFirstResult(html: string, query: string): EbayBestSeller {
+  const empty: EbayBestSeller = {
+    query,
+    title: null,
+    price: null,
+    currency: null,
+    url: null,
+    image: null,
+    condition: null,
+    seller: null,
+    found: false,
+  };
+
+  // eBay search results are wrapped in <li class="s-item ..."> blocks.
+  // Skip the first "s-item" which is often a hidden template.
+  const itemRegex = /<li[^>]*class="[^"]*\bs-item\b[^"]*"[^>]*>([\s\S]*?)<\/li>/g;
+  const matches: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = itemRegex.exec(html)) !== null) {
+    matches.push(m[1]);
+    if (matches.length > 4) break;
+  }
+  if (matches.length === 0) return empty;
+
+  // Find first item that has a real title (skip placeholder "Shop on eBay")
+  for (const block of matches) {
+    const titleMatch =
+      block.match(/<div[^>]*class="[^"]*s-item__title[^"]*"[^>]*>(?:<span[^>]*>)?([^<]+)/i) ||
+      block.match(/<span[^>]*role="heading"[^>]*>([^<]+)/i);
+    const rawTitle = titleMatch ? decodeEntities(titleMatch[1]).trim() : null;
+    if (!rawTitle || /^shop on ebay$/i.test(rawTitle)) continue;
+
+    const linkMatch = block.match(/<a[^>]*class="[^"]*s-item__link[^"]*"[^>]*href="([^"]+)"/i);
+    const url = linkMatch ? decodeEntities(linkMatch[1]) : null;
+
+    const priceMatch = block.match(/<span[^>]*class="[^"]*s-item__price[^"]*"[^>]*>([^<]+)/i);
+    const priceText = priceMatch ? decodeEntities(priceMatch[1]).trim() : null;
+    let price: number | null = null;
+    let currency: string | null = null;
+    if (priceText) {
+      const numMatch = priceText.match(/([\d,]+\.?\d*)/);
+      if (numMatch) price = Number(numMatch[1].replace(/,/g, ""));
+      if (/\$/.test(priceText)) currency = "USD";
+      else if (/£/.test(priceText)) currency = "GBP";
+      else if (/€/.test(priceText)) currency = "EUR";
+      else {
+        const codeMatch = priceText.match(/\b([A-Z]{3})\b/);
+        currency = codeMatch ? codeMatch[1] : null;
+      }
+    }
+
+    const imgMatch =
+      block.match(/<img[^>]*class="[^"]*s-item__image[^"]*"[^>]*src="([^"]+)"/i) ||
+      block.match(/<img[^>]*src="([^"]+)"[^>]*class="[^"]*s-item__image/i) ||
+      block.match(/<img[^>]*src="(https:\/\/i\.ebayimg\.com\/[^"]+)"/i);
+    const image = imgMatch ? decodeEntities(imgMatch[1]) : null;
+
+    const condMatch = block.match(/<span[^>]*class="[^"]*SECONDARY_INFO[^"]*"[^>]*>([^<]+)/i);
+    const condition = condMatch ? decodeEntities(condMatch[1]).trim() : null;
+
+    const sellerMatch = block.match(/<span[^>]*class="[^"]*s-item__seller-info-text[^"]*"[^>]*>([^<]+)/i);
+    const seller = sellerMatch ? decodeEntities(sellerMatch[1]).trim() : null;
+
+    return {
+      query,
+      title: rawTitle,
+      price,
+      currency,
+      url,
+      image,
+      condition,
+      seller,
+      found: Boolean(url || price),
+    };
+  }
+
+  return empty;
+}
+
 export const searchEbayBestSellers = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((input: unknown) => SearchInput.parse(input))
   .handler(async ({ data }): Promise<EbayBestSeller[]> => {
-    let token: string;
-    try {
-      token = await getEbayAccessToken();
-    } catch (e) {
-      console.error("eBay auth failed, returning empty results:", e);
-      // Graceful fallback: return "not found" for every query so UI doesn't crash.
-      return data.queries.map((q: string) => ({
-        query: q,
-        title: null,
-        price: null,
-        currency: null,
-        url: null,
-        image: null,
-        condition: null,
-        seller: null,
-        found: false,
-      }));
-    }
-
     const fetchOne = async (q: string): Promise<EbayBestSeller> => {
       try {
-        const url = new URL(
-          "https://api.ebay.com/buy/browse/v1/item_summary/search",
-        );
-        url.searchParams.set("q", q);
-        url.searchParams.set("limit", "1");
-        // Sort by best match (default) — eBay's algorithm weights sales velocity.
-        url.searchParams.set("filter", "buyingOptions:{FIXED_PRICE}");
+        // _sop=12 = Best Match (default eBay sort, weighs sales/relevance).
+        const url = new URL("https://www.ebay.com/sch/i.html");
+        url.searchParams.set("_nkw", q);
+        url.searchParams.set("_sop", "12");
+        url.searchParams.set("LH_BIN", "1"); // Buy It Now only
 
         const r = await fetch(url.toString(), {
           headers: {
-            Authorization: `Bearer ${token}`,
-            "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
-            "Content-Type": "application/json",
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept:
+              "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
           },
         });
 
         if (!r.ok) {
-          console.error("eBay search failed:", q, r.status);
+          console.error("eBay scrape failed:", q, r.status);
           return {
             query: q,
             title: null,
@@ -167,45 +192,8 @@ export const searchEbayBestSellers = createServerFn({ method: "POST" })
           };
         }
 
-        const json = (await r.json()) as {
-          itemSummaries?: Array<{
-            title?: string;
-            price?: { value?: string; currency?: string };
-            itemWebUrl?: string;
-            image?: { imageUrl?: string };
-            thumbnailImages?: Array<{ imageUrl?: string }>;
-            condition?: string;
-            seller?: { username?: string };
-          }>;
-        };
-
-        const top = json.itemSummaries?.[0];
-        if (!top) {
-          return {
-            query: q,
-            title: null,
-            price: null,
-            currency: null,
-            url: null,
-            image: null,
-            condition: null,
-            seller: null,
-            found: false,
-          };
-        }
-
-        return {
-          query: q,
-          title: top.title ?? null,
-          price: top.price?.value ? Number(top.price.value) : null,
-          currency: top.price?.currency ?? null,
-          url: top.itemWebUrl ?? null,
-          image:
-            top.image?.imageUrl ?? top.thumbnailImages?.[0]?.imageUrl ?? null,
-          condition: top.condition ?? null,
-          seller: top.seller?.username ?? null,
-          found: true,
-        };
+        const html = await r.text();
+        return parseFirstResult(html, q);
       } catch (e) {
         console.error("eBay lookup error:", q, e);
         return {
