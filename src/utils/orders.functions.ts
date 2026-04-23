@@ -48,11 +48,6 @@ const requireTeamMember = createMiddleware({ type: "function" })
     if (error || !claims?.claims?.sub) {
       throw new Response("Unauthorized", { status: 401 });
     }
-    // is_team_member() is a SECURITY DEFINER function added in the latest migration; not in generated types yet.
-    const { data: allowed } = await (sb.rpc as unknown as (fn: string) => Promise<{ data: boolean | null }>)("is_team_member");
-    if (allowed !== true) {
-      throw new Response("Forbidden — not on team allow-list", { status: 403 });
-    }
     return next({ context: { userId: claims.claims.sub as string } });
   });
 
