@@ -584,6 +584,56 @@ function NewOrderPage() {
                         {l.line_total.toFixed(2)}
                       </TableCell>
                       <TableCell>
+                        {(() => {
+                          const eb = ebayResults[l.description];
+                          if (ebayLoading && !eb) {
+                            return (
+                              <span className="text-xs text-muted-foreground">
+                                <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
+                                searching…
+                              </span>
+                            );
+                          }
+                          if (!eb) {
+                            return <span className="text-xs text-muted-foreground">—</span>;
+                          }
+                          if (!eb.found || !eb.url) {
+                            return (
+                              <span className="text-xs text-muted-foreground">No match</span>
+                            );
+                          }
+                          return (
+                            <a
+                              href={eb.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group flex items-start gap-2"
+                              title={eb.title ?? ""}
+                            >
+                              {eb.image && (
+                                <img
+                                  src={eb.image}
+                                  alt=""
+                                  className="h-10 w-10 shrink-0 rounded border border-border object-cover"
+                                  loading="lazy"
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="line-clamp-2 text-xs font-medium leading-tight group-hover:underline">
+                                  {eb.title}
+                                </p>
+                                {eb.price !== null && (
+                                  <p className="text-xs tabular-nums text-muted-foreground">
+                                    {eb.currency ?? "USD"} {eb.price.toFixed(2)}
+                                    <ExternalLink className="ml-1 inline h-3 w-3" />
+                                  </p>
+                                )}
+                              </div>
+                            </a>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
                         <Button
                           variant="ghost"
                           size="icon"
