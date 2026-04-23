@@ -112,7 +112,7 @@ const SearchInput = z.object({
 });
 
 export const searchEbayBestSellers = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((input: unknown) => SearchInput.parse(input))
   .handler(async ({ data }): Promise<EbayBestSeller[]> => {
     const token = await getEbayAccessToken();
