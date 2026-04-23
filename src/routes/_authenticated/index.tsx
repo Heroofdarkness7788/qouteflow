@@ -17,13 +17,16 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/auth-context";
-import { Sparkles, Upload, X, Download, Save, Loader2 } from "lucide-react";
+import { Sparkles, Upload, X, Download, Save, Loader2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import {
   extractOrderFromEmail,
-  type ExtractedItem,
 } from "@/utils/orders.functions";
+import {
+  searchEbayBestSellers,
+  type EbayBestSeller,
+} from "@/utils/ebay.functions";
 import {
   buildQuotationWorkbook,
   buildZohoEstimateCSV,
@@ -74,8 +77,11 @@ function NewOrderPage() {
   const [unmatched, setUnmatched] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [ebayResults, setEbayResults] = useState<Record<string, EbayBestSeller>>({});
+  const [ebayLoading, setEbayLoading] = useState(false);
 
   const extract = useServerFn(extractOrderFromEmail);
+  const ebaySearch = useServerFn(searchEbayBestSellers);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -193,6 +199,29 @@ function NewOrderPage() {
         `Extracted ${result.items.length} line${result.items.length === 1 ? "" : "s"}` +
           (missing.length ? ` · ${missing.length} unmatched SKU` : ""),
       );
+
+      // Auto-fetch eBay top best-seller for every extracted item.
+      const queries = result.items.map((it) => {
+        const matchedRow = map.get(it.sku.toUpperCase());
+        return matchedRow?.description || it.raw_name || it.sku;
+      });
+      const uniqueQueries = [...new Set(queries.filter(Boolean))];
+      if (uniqueQueries.length > 0) {
+        setEbayLoading(true);
+        setEbayResults({});
+        ebaySearch({ data: { queries: uniqueQueries } })
+          .then((rows) => {
+            const map: Record<string, EbayBestSeller> = {};
+            for (const r of rows) map[r.query] = r;
+            setEbayResults(map);
+            const found = rows.filter((r) => r.found).length;
+            if (found > 0) toast.success(`Found ${found} eBay match${found === 1 ? "" : "es"}`);
+          })
+          .catch((e) => {
+            toast.error(friendlyError(e, "eBay lookup failed"));
+          })
+          .finally(() => setEbayLoading(false));
+      }
     } catch (e) {
       toast.error(friendlyError(e, "Extraction failed"));
     } finally {
@@ -497,6 +526,12 @@ function NewOrderPage() {
                     <TableHead className="w-24 text-right">Sell</TableHead>
                     <TableHead className="w-20 text-right">Disc %</TableHead>
                     <TableHead className="w-24 text-right">Total</TableHead>
+                    <TableHead className="w-56">
+                      eBay best seller
+                      {ebayLoading && (
+                        <Loader2 className="ml-1 inline h-3 w-3 animate-spin" />
+                      )}
+                    </TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -546,6 +581,56 @@ function NewOrderPage() {
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-medium">
                         {l.line_total.toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const eb = ebayResults[l.description];
+                          if (ebayLoading && !eb) {
+                            return (
+                              <span className="text-xs text-muted-foreground">
+                                <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
+                                searching…
+                              </span>
+                            );
+                          }
+                          if (!eb) {
+                            return <span className="text-xs text-muted-foreground">—</span>;
+                          }
+                          if (!eb.found || !eb.url) {
+                            return (
+                              <span className="text-xs text-muted-foreground">No match</span>
+                            );
+                          }
+                          return (
+                            <a
+                              href={eb.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group flex items-start gap-2"
+                              title={eb.title ?? ""}
+                            >
+                              {eb.image && (
+                                <img
+                                  src={eb.image}
+                                  alt=""
+                                  className="h-10 w-10 shrink-0 rounded border border-border object-cover"
+                                  loading="lazy"
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="line-clamp-2 text-xs font-medium leading-tight group-hover:underline">
+                                  {eb.title}
+                                </p>
+                                {eb.price !== null && (
+                                  <p className="text-xs tabular-nums text-muted-foreground">
+                                    {eb.currency ?? "USD"} {eb.price.toFixed(2)}
+                                    <ExternalLink className="ml-1 inline h-3 w-3" />
+                                  </p>
+                                )}
+                              </div>
+                            </a>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Button
