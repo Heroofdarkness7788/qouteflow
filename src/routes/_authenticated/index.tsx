@@ -200,6 +200,29 @@ function NewOrderPage() {
         `Extracted ${result.items.length} line${result.items.length === 1 ? "" : "s"}` +
           (missing.length ? ` · ${missing.length} unmatched SKU` : ""),
       );
+
+      // Auto-fetch eBay top best-seller for every extracted item.
+      const queries = result.items.map((it) => {
+        const matchedRow = map.get(it.sku.toUpperCase());
+        return matchedRow?.description || it.raw_name || it.sku;
+      });
+      const uniqueQueries = [...new Set(queries.filter(Boolean))];
+      if (uniqueQueries.length > 0) {
+        setEbayLoading(true);
+        setEbayResults({});
+        ebaySearch({ data: { queries: uniqueQueries } })
+          .then((rows) => {
+            const map: Record<string, EbayBestSeller> = {};
+            for (const r of rows) map[r.query] = r;
+            setEbayResults(map);
+            const found = rows.filter((r) => r.found).length;
+            if (found > 0) toast.success(`Found ${found} eBay match${found === 1 ? "" : "es"}`);
+          })
+          .catch((e) => {
+            toast.error(friendlyError(e, "eBay lookup failed"));
+          })
+          .finally(() => setEbayLoading(false));
+      }
     } catch (e) {
       toast.error(friendlyError(e, "Extraction failed"));
     } finally {
