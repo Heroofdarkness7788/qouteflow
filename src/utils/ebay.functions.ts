@@ -115,7 +115,24 @@ export const searchEbayBestSellers = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((input: unknown) => SearchInput.parse(input))
   .handler(async ({ data }): Promise<EbayBestSeller[]> => {
-    const token = await getEbayAccessToken();
+    let token: string;
+    try {
+      token = await getEbayAccessToken();
+    } catch (e) {
+      console.error("eBay auth failed, returning empty results:", e);
+      // Graceful fallback: return "not found" for every query so UI doesn't crash.
+      return data.queries.map((q: string) => ({
+        query: q,
+        title: null,
+        price: null,
+        currency: null,
+        url: null,
+        image: null,
+        condition: null,
+        seller: null,
+        found: false,
+      }));
+    }
 
     const fetchOne = async (q: string): Promise<EbayBestSeller> => {
       try {
