@@ -22,7 +22,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import {
   extractOrderFromEmail,
-  type ExtractedItem,
 } from "@/utils/orders.functions";
 import {
   searchEbayBestSellers,
