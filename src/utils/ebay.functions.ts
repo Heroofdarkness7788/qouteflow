@@ -218,7 +218,7 @@ export const searchEbayBestSellers = createServerFn({ method: "POST" })
     await Promise.all(workers);
 
     // Preserve original input order
-    const order = new Map(data.queries.map((q, i) => [q, i]));
+    const order = new Map<string, number>(data.queries.map((q: string, i: number) => [q, i]));
     results.sort((a, b) => (order.get(a.query) ?? 0) - (order.get(b.query) ?? 0));
     return results;
   });
