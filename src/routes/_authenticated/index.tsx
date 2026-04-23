@@ -17,13 +17,17 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/auth-context";
-import { Sparkles, Upload, X, Download, Save, Loader2 } from "lucide-react";
+import { Sparkles, Upload, X, Download, Save, Loader2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import {
   extractOrderFromEmail,
   type ExtractedItem,
 } from "@/utils/orders.functions";
+import {
+  searchEbayBestSellers,
+  type EbayBestSeller,
+} from "@/utils/ebay.functions";
 import {
   buildQuotationWorkbook,
   buildZohoEstimateCSV,
