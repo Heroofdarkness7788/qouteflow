@@ -210,14 +210,14 @@ function NewOrderPage() {
         setEbayLoading(true);
         setEbayResults({});
         ebaySearch({ data: { queries: uniqueQueries } })
-          .then((rows) => {
+          .then((rows: EbayBestSeller[]) => {
             const map: Record<string, EbayBestSeller> = {};
             for (const r of rows) map[r.query] = r;
             setEbayResults(map);
-            const found = rows.filter((r) => r.found).length;
+            const found = rows.filter((r: EbayBestSeller) => r.found).length;
             if (found > 0) toast.success(`Found ${found} eBay match${found === 1 ? "" : "es"}`);
           })
-          .catch((e) => {
+          .catch((e: unknown) => {
             toast.error(friendlyError(e, "eBay lookup failed"));
           })
           .finally(() => setEbayLoading(false));
