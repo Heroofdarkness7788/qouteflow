@@ -161,11 +161,9 @@ export const searchEbayBestSellers = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<EbayBestSeller[]> => {
     const fetchOne = async (q: string): Promise<EbayBestSeller> => {
       try {
-        // _sop=12 = Best Match (default eBay sort, weighs sales/relevance).
+        // Plain eBay search — no sort/filter applied.
         const url = new URL("https://www.ebay.com/sch/i.html");
         url.searchParams.set("_nkw", q);
-        url.searchParams.set("_sop", "12");
-        url.searchParams.set("LH_BIN", "1"); // Buy It Now only
 
         const r = await fetch(url.toString(), {
           headers: {
