@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
-import { Inbox, ListChecks, Database, LogOut, Users } from "lucide-react";
+import { Inbox, ListChecks, Database, LogOut, Users, Phone, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { useAuth } from "@/lib/auth-context";
@@ -46,7 +46,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur">
+      {/* Top contact strip */}
+      <div className="bg-brand-accent text-brand-accent-foreground">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-1.5 text-xs">
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="inline-flex items-center gap-1.5">
+              <Phone className="h-3 w-3" /> +966-12-289-2200
+            </span>
+            <span className="hidden items-center gap-1.5 sm:inline-flex">
+              <Mail className="h-3 w-3" /> info@quoteflow.app
+            </span>
+          </div>
+          {user?.email && (
+            <span className="hidden md:inline opacity-90">{user.email}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Main brand header */}
+      <header className="sticky top-0 z-10 border-b border-sidebar-border bg-brand text-brand-foreground shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <Logo />
           <nav className="hidden gap-1 sm:flex">
@@ -58,10 +76,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={n.to}
                   to={n.to}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    "relative flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium uppercase tracking-wide transition-colors",
                     active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      ? "text-brand-foreground after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:bg-brand-accent"
+                      : "text-brand-foreground/75 hover:text-brand-foreground hover:bg-white/5",
                   )}
                 >
                   <n.icon className="h-4 w-4" />
@@ -71,18 +89,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="flex items-center gap-2">
-            {user?.email && (
-              <span className="hidden text-xs text-muted-foreground md:inline">
-                {user.email}
-              </span>
-            )}
-            <Button variant="ghost" size="sm" onClick={signOut} title="Sign out">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              title="Sign out"
+              className="text-brand-foreground hover:bg-white/10 hover:text-brand-foreground"
+            >
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:ml-2 sm:inline">Sign out</span>
             </Button>
           </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto border-t border-border px-2 py-2 sm:hidden">
+        <nav className="flex gap-1 overflow-x-auto border-t border-white/10 px-2 py-2 sm:hidden">
           {nav.map((n) => {
             const active =
               n.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(n.to);
@@ -91,10 +110,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={n.to}
                 to={n.to}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium",
+                  "flex shrink-0 items-center gap-2 rounded-sm px-3 py-1.5 text-sm font-medium uppercase tracking-wide",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent",
+                    ? "bg-brand-accent text-brand-accent-foreground"
+                    : "text-brand-foreground/80 hover:bg-white/10",
                 )}
               >
                 <n.icon className="h-4 w-4" />
@@ -104,7 +123,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </header>
+
       <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+
+      {/* Footer */}
+      <footer className="mt-12 border-t border-sidebar-border bg-brand text-brand-foreground">
+        <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-brand-foreground/80">
+          © {new Date().getFullYear()} QuoteFlow ·{" "}
+          <span className="text-brand-accent">Quotation Management</span>
+        </div>
+      </footer>
     </div>
   );
 }
