@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Send } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/auth-context";
 
@@ -43,6 +43,21 @@ function OrdersPage() {
         else setOrders((data ?? []) as Order[]);
       });
   }, []);
+
+  const markAsSent = async (o: Order) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "sent" })
+      .eq("id", o.id);
+    if (error) {
+      toast.error(friendlyError(error, "Failed to update status"));
+      return;
+    }
+    setOrders((prev) =>
+      prev.map((x) => (x.id === o.id ? { ...x, status: "sent" } : x)),
+    );
+    toast.success(`${o.quotation_number} marked as sent`);
+  };
 
   const download = async (o: Order) => {
     if (!o.quotation_file_path) return;
@@ -121,12 +136,20 @@ function OrdersPage() {
                     <p className="text-lg font-semibold tabular-nums">
                       {o.currency} {o.total.toFixed(2)}
                     </p>
-                    {o.quotation_file_path && (
-                      <Button size="sm" variant="outline" onClick={() => download(o)}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Excel
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {o.quotation_file_path && (
+                        <Button size="sm" variant="outline" onClick={() => download(o)}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Excel
+                        </Button>
+                      )}
+                      {o.status === "draft" && (
+                        <Button size="sm" onClick={() => markAsSent(o)}>
+                          <Send className="mr-2 h-4 w-4" />
+                          Mark as Sent
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Card>
