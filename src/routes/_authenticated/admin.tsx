@@ -83,7 +83,7 @@ function AdminPage() {
         await Promise.all([
           supabase
             .from("profiles")
-            .select("id, email, created_at, last_sign_in_at")
+            .select("id, email, full_name, created_at, last_sign_in_at")
             .order("created_at", { ascending: false }),
           supabase.from("user_roles").select("user_id, role").eq("role", "admin"),
         ]);
@@ -94,6 +94,7 @@ function AdminPage() {
         (profiles ?? []).map((p) => ({
           id: p.id,
           email: p.email,
+          full_name: p.full_name,
           created_at: p.created_at,
           last_sign_in_at: p.last_sign_in_at,
           is_admin: adminSet.has(p.id),
