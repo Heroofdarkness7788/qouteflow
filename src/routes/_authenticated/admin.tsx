@@ -240,7 +240,7 @@ function AdminPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Email</TableHead>
+              <TableHead>Name</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Signed up</TableHead>
               <TableHead>Last sign-in</TableHead>
@@ -253,13 +253,18 @@ function AdminPage() {
               const busy = busyId === u.id;
               return (
                 <TableRow key={u.id}>
-                  <TableCell className="font-medium">
-                    {u.email}
-                    {self && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        (you)
-                      </span>
-                    )}
+                  <TableCell>
+                    <div className="font-medium">
+                      {u.full_name?.trim() || "—"}
+                      {self && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (you)
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {u.email}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {u.is_admin ? (
