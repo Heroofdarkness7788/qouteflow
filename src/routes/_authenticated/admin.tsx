@@ -11,11 +11,31 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield, ShieldOff, ShieldAlert } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Loader2,
+  Shield,
+  ShieldOff,
+  ShieldAlert,
+  UserMinus,
+  Trash2,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { friendlyError } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteUserAccount } from "@/utils/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
@@ -38,6 +58,7 @@ function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const deleteUserFn = useServerFn(deleteUserAccount);
 
   const checkAdmin = async () => {
     if (!user) return false;
@@ -137,6 +158,44 @@ function AdminPage() {
     }
   };
 
+  // Soft-remove access: deletes ALL roles for the user. They remain in auth
+  // but every RLS policy on (authenticated) tables still applies — they just
+  // lose the 'user' role label and any 'admin' role. Their auth account stays
+  // so historical orders/profile keep their email.
+  const revokeAllAccess = async (u: UserRow) => {
+    if (u.id === user?.id) {
+      toast.error("You can't revoke your own access.");
+      return;
+    }
+    setBusyId(u.id);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", u.id);
+      if (error) throw error;
+      toast.success(`Access revoked for ${u.email}`);
+      await loadUsers();
+    } catch (e) {
+      toast.error(friendlyError(e, "Couldn't revoke access."));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const deleteAccount = async (u: UserRow) => {
+    setBusyId(u.id);
+    try {
+      await deleteUserFn({ data: { userId: u.id } });
+      toast.success(`Deleted ${u.email}`);
+      await loadUsers();
+    } catch (e) {
+      toast.error(friendlyError(e, "Couldn't delete account."));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading || isAdmin === null) {
     return (
       <AppShell>
@@ -170,8 +229,8 @@ function AdminPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
           <p className="text-sm text-muted-foreground">
-            {users.length} user{users.length === 1 ? "" : "s"} signed up. Promote
-            teammates to admin to give them user-management rights.
+            {users.length} user{users.length === 1 ? "" : "s"} signed up. Manage
+            roles, revoke access, or permanently delete an account.
           </p>
         </div>
       </div>
@@ -189,6 +248,7 @@ function AdminPage() {
           <TableBody>
             {users.map((u) => {
               const self = u.id === user?.id;
+              const busy = busyId === u.id;
               return (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">
@@ -212,35 +272,82 @@ function AdminPage() {
                   <TableCell className="text-muted-foreground">
                     {fmt(u.last_sign_in_at)}
                   </TableCell>
-                  <TableCell className="text-right">
-                    {u.is_admin ? (
+                  <TableCell>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {u.is_admin ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={self || busy}
+                          onClick={() => revokeAdmin(u.id)}
+                        >
+                          {busy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ShieldOff className="h-4 w-4" />
+                          )}
+                          <span className="ml-2">Revoke admin</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => grantAdmin(u.id)}
+                        >
+                          {busy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Shield className="h-4 w-4" />
+                          )}
+                          <span className="ml-2">Make admin</span>
+                        </Button>
+                      )}
+
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={self || busyId === u.id}
-                        onClick={() => revokeAdmin(u.id)}
+                        disabled={self || busy}
+                        onClick={() => revokeAllAccess(u)}
+                        title="Removes all roles. User stays in the system but can't use the app."
                       >
-                        {busyId === u.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <ShieldOff className="h-4 w-4" />
-                        )}
-                        <span className="ml-2">Revoke admin</span>
+                        <UserMinus className="h-4 w-4" />
+                        <span className="ml-2">Revoke access</span>
                       </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        disabled={busyId === u.id}
-                        onClick={() => grantAdmin(u.id)}
-                      >
-                        {busyId === u.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Shield className="h-4 w-4" />
-                        )}
-                        <span className="ml-2">Make admin</span>
-                      </Button>
-                    )}
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={self || busy}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="ml-2">Delete</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Delete {u.email}?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This permanently removes the user's account and
+                              login. Quotations they created will remain. This
+                              action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteAccount(u)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete account
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
