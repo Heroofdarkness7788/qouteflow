@@ -29,6 +29,7 @@ export type Database = {
           notes: string | null
           quotation_file_path: string | null
           quotation_number: string
+          sent_at: string | null
           status: string
           subtotal: number
           tax_amount: number
@@ -51,6 +52,7 @@ export type Database = {
           notes?: string | null
           quotation_file_path?: string | null
           quotation_number: string
+          sent_at?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -73,6 +75,7 @@ export type Database = {
           notes?: string | null
           quotation_file_path?: string | null
           quotation_number?: string
+          sent_at?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number

@@ -26,6 +26,7 @@ type Order = {
   quotation_file_path: string | null;
   unmatched_skus: string[] | null;
   created_at: string;
+  sent_at: string | null;
 };
 
 function OrdersPage() {
@@ -35,7 +36,7 @@ function OrdersPage() {
     supabase
       .from("orders")
       .select(
-        "id,quotation_number,customer_name,customer_email,email_subject,total,currency,status,quotation_file_path,unmatched_skus,created_at",
+        "id,quotation_number,customer_name,customer_email,email_subject,total,currency,status,quotation_file_path,unmatched_skus,created_at,sent_at",
       )
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -45,16 +46,19 @@ function OrdersPage() {
   }, []);
 
   const markAsSent = async (o: Order) => {
+    const sentAt = new Date().toISOString();
     const { error } = await supabase
       .from("orders")
-      .update({ status: "sent" })
+      .update({ status: "sent", sent_at: sentAt })
       .eq("id", o.id);
     if (error) {
       toast.error(friendlyError(error, "Failed to update status"));
       return;
     }
     setOrders((prev) =>
-      prev.map((x) => (x.id === o.id ? { ...x, status: "sent" } : x)),
+      prev.map((x) =>
+        x.id === o.id ? { ...x, status: "sent", sent_at: sentAt } : x,
+      ),
     );
     toast.success(`${o.quotation_number} marked as sent`);
   };
@@ -131,6 +135,11 @@ function OrdersPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {new Date(o.created_at).toLocaleString()}
                     </p>
+                    {o.sent_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Sent at {new Date(o.sent_at).toLocaleString()}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <p className="text-lg font-semibold tabular-nums">
