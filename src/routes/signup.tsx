@@ -17,6 +17,7 @@ export const Route = createFileRoute("/signup")({
 
 function SignupPage() {
   const navigate = useNavigate();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,9 +26,13 @@ function SignupPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      const trimmedName = fullName.trim();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: { full_name: trimmedName },
+        },
       });
       if (error) throw error;
       if (data.session) {
@@ -73,6 +78,18 @@ function SignupPage() {
           </p>
         </div>
         <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="fullName">Full name</Label>
+            <Input
+              id="fullName"
+              type="text"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              autoComplete="name"
+              placeholder="Jane Doe"
+            />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
