@@ -64,6 +64,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 function NewOrderPage() {
+  const { user } = useAuth();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [customerName, setCustomerName] = useState("");
