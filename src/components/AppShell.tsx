@@ -45,9 +45,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-16 sm:pb-0">
       <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
           <Logo />
           <nav className="hidden gap-1 sm:flex">
             {nav.map((n) => {
@@ -76,35 +76,47 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {user.email}
               </span>
             )}
-            <Button variant="ghost" size="sm" onClick={signOut} title="Sign out">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              title="Sign out"
+              className="h-9 px-2 sm:px-3"
+            >
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:ml-2 sm:inline">Sign out</span>
             </Button>
           </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto border-t border-border px-2 py-2 sm:hidden">
-          {nav.map((n) => {
-            const active =
-              n.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(n.to);
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
-                className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent",
-                )}
-              >
-                <n.icon className="h-4 w-4" />
-                {n.label}
-              </Link>
-            );
-          })}
-        </nav>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+
+      {/* Mobile bottom nav — easier thumb reach than top tabs */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-card/95 backdrop-blur sm:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {nav.map((n) => {
+          const active =
+            n.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(n.to);
+          return (
+            <Link
+              key={n.to}
+              to={n.to}
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors",
+                active
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <n.icon className="h-5 w-5" />
+              <span className="leading-none">{n.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <main className="mx-auto max-w-6xl px-3 py-4 sm:px-4 sm:py-6">{children}</main>
     </div>
   );
 }
