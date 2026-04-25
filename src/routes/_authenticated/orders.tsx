@@ -152,11 +152,17 @@ function OrdersPage() {
                       </p>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {new Date(o.created_at).toLocaleString()}
+                      Created {new Date(o.created_at).toLocaleString()}
+                      {o.created_by_name && (
+                        <span> · by {o.created_by_name}</span>
+                      )}
                     </p>
                     {o.sent_at && (
                       <p className="text-xs text-muted-foreground">
-                        Sent at {new Date(o.sent_at).toLocaleString()}
+                        Sent {new Date(o.sent_at).toLocaleString()}
+                        {o.sent_by_name && (
+                          <span> · by {o.sent_by_name}</span>
+                        )}
                       </p>
                     )}
                   </div>
