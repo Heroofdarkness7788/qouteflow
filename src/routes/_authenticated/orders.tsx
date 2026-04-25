@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Send } from "lucide-react";
 import { toast } from "sonner";
-import { friendlyError } from "@/lib/auth-context";
+import { friendlyError, useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
@@ -27,16 +27,19 @@ type Order = {
   unmatched_skus: string[] | null;
   created_at: string;
   sent_at: string | null;
+  created_by_name: string | null;
+  sent_by_name: string | null;
 };
 
 function OrdersPage() {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     supabase
       .from("orders")
       .select(
-        "id,quotation_number,customer_name,customer_email,email_subject,total,currency,status,quotation_file_path,unmatched_skus,created_at,sent_at",
+        "id,quotation_number,customer_name,customer_email,email_subject,total,currency,status,quotation_file_path,unmatched_skus,created_at,sent_at,created_by_name,sent_by_name",
       )
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
