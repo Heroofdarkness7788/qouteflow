@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { friendlyError } from "@/lib/auth-context";
+import { friendlyError, useAuth } from "@/lib/auth-context";
 import { Sparkles, Upload, X, Download, Save, Loader2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
