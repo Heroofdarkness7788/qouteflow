@@ -236,7 +236,8 @@ function AdminPage() {
           </p>
         </div>
       </div>
-      <div className="rounded-lg border border-border bg-card">
+      {/* Desktop table */}
+      <div className="hidden rounded-lg border border-border bg-card md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -371,6 +372,125 @@ function AdminPage() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="space-y-3 md:hidden">
+        {users.length === 0 && (
+          <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            No users yet.
+          </div>
+        )}
+        {users.map((u) => {
+          const self = u.id === user?.id;
+          const busy = busyId === u.id;
+          return (
+            <div
+              key={u.id}
+              className="rounded-lg border border-border bg-card p-4"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-medium">
+                      {u.full_name?.trim() || "—"}
+                    </p>
+                    {self && (
+                      <span className="text-xs text-muted-foreground">
+                        (you)
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {u.email}
+                  </p>
+                </div>
+                {u.is_admin ? (
+                  <Badge>Admin</Badge>
+                ) : (
+                  <Badge variant="secondary">User</Badge>
+                )}
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-muted-foreground">
+                <span>Joined {fmt(u.created_at)}</span>
+                <span className="text-right">
+                  Last in {fmt(u.last_sign_in_at)}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {u.is_admin ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={self || busy}
+                    onClick={() => revokeAdmin(u.id)}
+                  >
+                    {busy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ShieldOff className="h-4 w-4" />
+                    )}
+                    <span className="ml-1.5">Revoke admin</span>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => grantAdmin(u.id)}
+                  >
+                    {busy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Shield className="h-4 w-4" />
+                    )}
+                    <span className="ml-1.5">Make admin</span>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={self || busy}
+                  onClick={() => revokeAllAccess(u)}
+                >
+                  <UserMinus className="h-4 w-4" />
+                  <span className="ml-1.5">Revoke</span>
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={self || busy}
+                      className="col-span-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="ml-1.5">Delete account</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete {u.email}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes the user's account and login.
+                        Quotations they created will remain. This action cannot
+                        be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteAccount(u)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete account
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </AppShell>
   );

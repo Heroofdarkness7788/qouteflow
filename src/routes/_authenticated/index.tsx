@@ -356,7 +356,7 @@ function NewOrderPage() {
           </p>
         </div>
 
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -459,8 +459,8 @@ function NewOrderPage() {
         </Card>
 
         {(lines.length > 0 || unmatched.length > 0) && (
-          <Card className="p-5">
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <Card className="p-4 sm:p-5">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold">Quotation</h2>
                 <p className="text-sm text-muted-foreground">
@@ -685,8 +685,8 @@ function NewOrderPage() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <Button onClick={saveAndDownload} disabled={saving} size="lg">
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+              <Button onClick={saveAndDownload} disabled={saving} size="lg" className="w-full sm:w-auto">
                 {saving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (

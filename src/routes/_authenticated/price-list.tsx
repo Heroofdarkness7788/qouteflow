@@ -165,20 +165,21 @@ function PriceListPage() {
           </p>
         </Card>
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Input
             placeholder="Search SKU or description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
+            className="sm:max-w-sm"
           />
-          <Button variant="outline" size="sm" onClick={addManual}>
+          <Button variant="outline" size="sm" onClick={addManual} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Add manually
           </Button>
         </div>
 
-        <Card>
+        {/* Desktop table */}
+        <Card className="hidden sm:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -222,6 +223,35 @@ function PriceListPage() {
             </TableBody>
           </Table>
         </Card>
+
+        {/* Mobile cards */}
+        <div className="space-y-2 sm:hidden">
+          {filtered.length === 0 ? (
+            <Card className="p-6 text-center text-sm text-muted-foreground">
+              {rows.length === 0 ? "No items yet — upload a file above." : "No matches."}
+            </Card>
+          ) : (
+            filtered.map((r) => (
+              <Card key={r.id} className="flex items-start justify-between gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-xs font-medium">{r.sku}</p>
+                  <p className="truncate text-sm">{r.description}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                    {r.currency} {r.unit_price.toFixed(2)} / {r.unit ?? "pcs"}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => remove(r.id)}
+                  className="shrink-0"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </Card>
+            ))
+          )}
+        </div>
 
         {rows.length > 0 && (
           <p className="text-xs text-muted-foreground">
