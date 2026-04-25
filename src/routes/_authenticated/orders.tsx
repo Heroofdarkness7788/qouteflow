@@ -50,9 +50,23 @@ function OrdersPage() {
 
   const markAsSent = async (o: Order) => {
     const sentAt = new Date().toISOString();
+    let sentByName: string | null = null;
+    if (user?.id) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .maybeSingle();
+      sentByName = prof?.full_name?.trim() || prof?.email || null;
+    }
     const { error } = await supabase
       .from("orders")
-      .update({ status: "sent", sent_at: sentAt })
+      .update({
+        status: "sent",
+        sent_at: sentAt,
+        sent_by: user?.id ?? null,
+        sent_by_name: sentByName,
+      })
       .eq("id", o.id);
     if (error) {
       toast.error(friendlyError(error, "Failed to update status"));
@@ -60,7 +74,9 @@ function OrdersPage() {
     }
     setOrders((prev) =>
       prev.map((x) =>
-        x.id === o.id ? { ...x, status: "sent", sent_at: sentAt } : x,
+        x.id === o.id
+          ? { ...x, status: "sent", sent_at: sentAt, sent_by_name: sentByName }
+          : x,
       ),
     );
     toast.success(`${o.quotation_number} marked as sent`);
