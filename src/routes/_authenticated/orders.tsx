@@ -166,7 +166,7 @@ function OrdersPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex w-full flex-row items-center justify-between gap-2 sm:w-auto sm:flex-col sm:items-end">
                     <p className="text-lg font-semibold tabular-nums">
                       {o.currency} {o.total.toFixed(2)}
                     </p>
