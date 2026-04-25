@@ -283,6 +283,16 @@ function NewOrderPage() {
         upsert: true,
       });
 
+      let createdByName: string | null = null;
+      if (user?.id) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", user.id)
+          .maybeSingle();
+        createdByName = prof?.full_name?.trim() || prof?.email || null;
+      }
+
       const { error: insErr } = await supabase.from("orders").insert({
         quotation_number,
         customer_name: customerName || null,
@@ -301,6 +311,8 @@ function NewOrderPage() {
         notes: notes || null,
         status: "draft",
         quotation_file_path: path,
+        created_by: user?.id ?? null,
+        created_by_name: createdByName,
       });
       if (insErr) throw insErr;
 
