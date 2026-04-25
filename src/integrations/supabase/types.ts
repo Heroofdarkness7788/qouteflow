@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           attachment_names: string[] | null
           created_at: string
+          created_by: string | null
+          created_by_name: string | null
           currency: string
           customer_email: string | null
           customer_name: string | null
@@ -30,6 +32,8 @@ export type Database = {
           quotation_file_path: string | null
           quotation_number: string
           sent_at: string | null
+          sent_by: string | null
+          sent_by_name: string | null
           status: string
           subtotal: number
           tax_amount: number
@@ -41,6 +45,8 @@ export type Database = {
         Insert: {
           attachment_names?: string[] | null
           created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
           currency?: string
           customer_email?: string | null
           customer_name?: string | null
@@ -53,6 +59,8 @@ export type Database = {
           quotation_file_path?: string | null
           quotation_number: string
           sent_at?: string | null
+          sent_by?: string | null
+          sent_by_name?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -64,6 +72,8 @@ export type Database = {
         Update: {
           attachment_names?: string[] | null
           created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
           currency?: string
           customer_email?: string | null
           customer_name?: string | null
@@ -76,6 +86,8 @@ export type Database = {
           quotation_file_path?: string | null
           quotation_number?: string
           sent_at?: string | null
+          sent_by?: string | null
+          sent_by_name?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
