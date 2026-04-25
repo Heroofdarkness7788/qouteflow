@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Send } from "lucide-react";
 import { toast } from "sonner";
-import { friendlyError } from "@/lib/auth-context";
+import { friendlyError, useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
@@ -27,16 +27,19 @@ type Order = {
   unmatched_skus: string[] | null;
   created_at: string;
   sent_at: string | null;
+  created_by_name: string | null;
+  sent_by_name: string | null;
 };
 
 function OrdersPage() {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     supabase
       .from("orders")
       .select(
-        "id,quotation_number,customer_name,customer_email,email_subject,total,currency,status,quotation_file_path,unmatched_skus,created_at,sent_at",
+        "id,quotation_number,customer_name,customer_email,email_subject,total,currency,status,quotation_file_path,unmatched_skus,created_at,sent_at,created_by_name,sent_by_name",
       )
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -47,9 +50,23 @@ function OrdersPage() {
 
   const markAsSent = async (o: Order) => {
     const sentAt = new Date().toISOString();
+    let sentByName: string | null = null;
+    if (user?.id) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .maybeSingle();
+      sentByName = prof?.full_name?.trim() || prof?.email || null;
+    }
     const { error } = await supabase
       .from("orders")
-      .update({ status: "sent", sent_at: sentAt })
+      .update({
+        status: "sent",
+        sent_at: sentAt,
+        sent_by: user?.id ?? null,
+        sent_by_name: sentByName,
+      })
       .eq("id", o.id);
     if (error) {
       toast.error(friendlyError(error, "Failed to update status"));
@@ -57,7 +74,9 @@ function OrdersPage() {
     }
     setOrders((prev) =>
       prev.map((x) =>
-        x.id === o.id ? { ...x, status: "sent", sent_at: sentAt } : x,
+        x.id === o.id
+          ? { ...x, status: "sent", sent_at: sentAt, sent_by_name: sentByName }
+          : x,
       ),
     );
     toast.success(`${o.quotation_number} marked as sent`);
@@ -133,11 +152,17 @@ function OrdersPage() {
                       </p>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {new Date(o.created_at).toLocaleString()}
+                      Created {new Date(o.created_at).toLocaleString()}
+                      {o.created_by_name && (
+                        <span> · by {o.created_by_name}</span>
+                      )}
                     </p>
                     {o.sent_at && (
                       <p className="text-xs text-muted-foreground">
-                        Sent at {new Date(o.sent_at).toLocaleString()}
+                        Sent {new Date(o.sent_at).toLocaleString()}
+                        {o.sent_by_name && (
+                          <span> · by {o.sent_by_name}</span>
+                        )}
                       </p>
                     )}
                   </div>

@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { friendlyError } from "@/lib/auth-context";
+import { friendlyError, useAuth } from "@/lib/auth-context";
 import { Sparkles, Upload, X, Download, Save, Loader2, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
@@ -64,6 +64,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 function NewOrderPage() {
+  const { user } = useAuth();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -282,6 +283,16 @@ function NewOrderPage() {
         upsert: true,
       });
 
+      let createdByName: string | null = null;
+      if (user?.id) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", user.id)
+          .maybeSingle();
+        createdByName = prof?.full_name?.trim() || prof?.email || null;
+      }
+
       const { error: insErr } = await supabase.from("orders").insert({
         quotation_number,
         customer_name: customerName || null,
@@ -300,6 +311,8 @@ function NewOrderPage() {
         notes: notes || null,
         status: "draft",
         quotation_file_path: path,
+        created_by: user?.id ?? null,
+        created_by_name: createdByName,
       });
       if (insErr) throw insErr;
 
