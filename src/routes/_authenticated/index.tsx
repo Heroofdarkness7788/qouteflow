@@ -83,6 +83,7 @@ function NewOrderPage() {
 
   const extract = useServerFn(extractOrderFromEmail);
   const ebaySearch = useServerFn(searchEbayBestSellers);
+  const pushZoho = useServerFn(pushQuotationToZoho);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
