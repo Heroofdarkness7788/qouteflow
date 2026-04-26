@@ -286,6 +286,28 @@ function NewOrderPage() {
         createdByName = prof?.full_name?.trim() || prof?.email || null;
       }
 
+      // Push to Zoho Books (best-effort — failures don't block save)
+      let zohoEstimateId: string | null = null;
+      let zohoEstimateNumber: string | null = null;
+      let zohoError: string | null = null;
+      try {
+        const zr = await pushZoho({
+          data: {
+            quotation_number,
+            date: quotationData.date,
+            customer_name: customerName || "",
+            customer_email: customerEmail || "",
+            currency,
+            notes: notes || "",
+            lines,
+          },
+        });
+        zohoEstimateId = zr.estimate_id;
+        zohoEstimateNumber = zr.estimate_number;
+      } catch (e) {
+        zohoError = e instanceof Error ? e.message : String(e);
+      }
+
       const { error: insErr } = await supabase.from("orders").insert({
         quotation_number,
         customer_name: customerName || null,
@@ -306,6 +328,10 @@ function NewOrderPage() {
         quotation_file_path: path,
         created_by: user?.id ?? null,
         created_by_name: createdByName,
+        zoho_estimate_id: zohoEstimateId,
+        zoho_estimate_number: zohoEstimateNumber,
+        zoho_pushed_at: zohoEstimateId ? new Date().toISOString() : null,
+        zoho_push_error: zohoError,
       });
       if (insErr) throw insErr;
 
@@ -318,9 +344,18 @@ function NewOrderPage() {
         URL.revokeObjectURL(url);
       };
       triggerDownload(xlsxBlob, `${quotation_number}.xlsx`);
-      triggerDownload(csvBlob, `${quotation_number}-zoho.csv`);
 
-      toast.success(`Quotation ${quotation_number} saved`);
+      if (zohoError) {
+        toast.warning(
+          `Saved ${quotation_number}, but Zoho push failed: ${zohoError}`,
+        );
+      } else if (zohoEstimateNumber) {
+        toast.success(
+          `Quotation ${quotation_number} saved · Pushed to Zoho as ${zohoEstimateNumber}`,
+        );
+      } else {
+        toast.success(`Quotation ${quotation_number} saved`);
+      }
       // Reset for next order
       setSubject("");
       setBody("");
