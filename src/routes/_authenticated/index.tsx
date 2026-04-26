@@ -29,11 +29,11 @@ import {
 } from "@/utils/ebay.functions";
 import {
   buildQuotationWorkbook,
-  buildZohoEstimateCSV,
   computeLineTotal,
   sellingPrice,
   type QuotationLine,
 } from "@/lib/quotation";
+import { pushQuotationToZoho } from "@/utils/zoho.functions";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: NewOrderPage,
@@ -83,6 +83,7 @@ function NewOrderPage() {
 
   const extract = useServerFn(extractOrderFromEmail);
   const ebaySearch = useServerFn(searchEbayBestSellers);
+  const pushZoho = useServerFn(pushQuotationToZoho);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -260,12 +261,10 @@ function NewOrderPage() {
         unmatched_skus: unmatched,
       };
       const buf = buildQuotationWorkbook(quotationData);
-      const csv = buildZohoEstimateCSV(quotationData);
 
       const xlsxBlob = new Blob([buf], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-      const csvBlob = new Blob([csv], { type: "text/csv;charset=utf-8" });
 
       const path = `${new Date().getFullYear()}/${quotation_number}.xlsx`;
       const { error: upErr } = await supabase.storage
@@ -277,12 +276,6 @@ function NewOrderPage() {
         });
       if (upErr) throw upErr;
 
-      const csvPath = `${new Date().getFullYear()}/${quotation_number}.csv`;
-      await supabase.storage.from("quotations").upload(csvPath, csvBlob, {
-        contentType: "text/csv;charset=utf-8",
-        upsert: true,
-      });
-
       let createdByName: string | null = null;
       if (user?.id) {
         const { data: prof } = await supabase
@@ -291,6 +284,28 @@ function NewOrderPage() {
           .eq("id", user.id)
           .maybeSingle();
         createdByName = prof?.full_name?.trim() || prof?.email || null;
+      }
+
+      // Push to Zoho Books (best-effort — failures don't block save)
+      let zohoEstimateId: string | null = null;
+      let zohoEstimateNumber: string | null = null;
+      let zohoError: string | null = null;
+      try {
+        const zr = await pushZoho({
+          data: {
+            quotation_number,
+            date: quotationData.date,
+            customer_name: customerName || "",
+            customer_email: customerEmail || "",
+            currency,
+            notes: notes || "",
+            lines,
+          },
+        });
+        zohoEstimateId = zr.estimate_id;
+        zohoEstimateNumber = zr.estimate_number;
+      } catch (e) {
+        zohoError = e instanceof Error ? e.message : String(e);
       }
 
       const { error: insErr } = await supabase.from("orders").insert({
@@ -313,6 +328,10 @@ function NewOrderPage() {
         quotation_file_path: path,
         created_by: user?.id ?? null,
         created_by_name: createdByName,
+        zoho_estimate_id: zohoEstimateId,
+        zoho_estimate_number: zohoEstimateNumber,
+        zoho_pushed_at: zohoEstimateId ? new Date().toISOString() : null,
+        zoho_push_error: zohoError,
       });
       if (insErr) throw insErr;
 
@@ -325,9 +344,18 @@ function NewOrderPage() {
         URL.revokeObjectURL(url);
       };
       triggerDownload(xlsxBlob, `${quotation_number}.xlsx`);
-      triggerDownload(csvBlob, `${quotation_number}-zoho.csv`);
 
-      toast.success(`Quotation ${quotation_number} saved`);
+      if (zohoError) {
+        toast.warning(
+          `Saved ${quotation_number}, but Zoho push failed: ${zohoError}`,
+        );
+      } else if (zohoEstimateNumber) {
+        toast.success(
+          `Quotation ${quotation_number} saved · Pushed to Zoho as ${zohoEstimateNumber}`,
+        );
+      } else {
+        toast.success(`Quotation ${quotation_number} saved`);
+      }
       // Reset for next order
       setSubject("");
       setBody("");

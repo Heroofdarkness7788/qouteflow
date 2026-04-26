@@ -41,6 +41,10 @@ export type Database = {
           total: number
           unmatched_skus: string[] | null
           updated_at: string
+          zoho_estimate_id: string | null
+          zoho_estimate_number: string | null
+          zoho_push_error: string | null
+          zoho_pushed_at: string | null
         }
         Insert: {
           attachment_names?: string[] | null
@@ -68,6 +72,10 @@ export type Database = {
           total?: number
           unmatched_skus?: string[] | null
           updated_at?: string
+          zoho_estimate_id?: string | null
+          zoho_estimate_number?: string | null
+          zoho_push_error?: string | null
+          zoho_pushed_at?: string | null
         }
         Update: {
           attachment_names?: string[] | null
@@ -95,6 +103,10 @@ export type Database = {
           total?: number
           unmatched_skus?: string[] | null
           updated_at?: string
+          zoho_estimate_id?: string | null
+          zoho_estimate_number?: string | null
+          zoho_push_error?: string | null
+          zoho_pushed_at?: string | null
         }
         Relationships: []
       }
