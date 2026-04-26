@@ -261,12 +261,10 @@ function NewOrderPage() {
         unmatched_skus: unmatched,
       };
       const buf = buildQuotationWorkbook(quotationData);
-      const csv = buildZohoEstimateCSV(quotationData);
 
       const xlsxBlob = new Blob([buf], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-      const csvBlob = new Blob([csv], { type: "text/csv;charset=utf-8" });
 
       const path = `${new Date().getFullYear()}/${quotation_number}.xlsx`;
       const { error: upErr } = await supabase.storage
@@ -277,12 +275,6 @@ function NewOrderPage() {
           upsert: true,
         });
       if (upErr) throw upErr;
-
-      const csvPath = `${new Date().getFullYear()}/${quotation_number}.csv`;
-      await supabase.storage.from("quotations").upload(csvPath, csvBlob, {
-        contentType: "text/csv;charset=utf-8",
-        upsert: true,
-      });
 
       let createdByName: string | null = null;
       if (user?.id) {
