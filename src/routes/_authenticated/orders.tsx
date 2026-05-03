@@ -387,6 +387,10 @@ function OrdersPage() {
               </div>
 
               <DialogFooter>
+                <Button variant="outline" onClick={() => viewPDF(reviewing)}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  View/Print
+                </Button>
                 <Button variant="outline" onClick={() => setReviewing(null)}>
                   Cancel
                 </Button>
