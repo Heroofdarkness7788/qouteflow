@@ -154,6 +154,35 @@ function OrdersPage() {
     window.open(data.signedUrl, "_blank");
   };
 
+  const buildPDF = (o: Order) =>
+    generateQuotationPDF({
+      quotation_number: o.quotation_number,
+      date: new Date(o.created_at).toLocaleDateString(),
+      customer_name: o.customer_name,
+      customer_email: o.customer_email,
+      currency: o.currency,
+      lines: o.matched_items ?? [],
+      subtotal: o.subtotal,
+      tax_rate: o.tax_rate,
+      tax_amount: o.tax_amount,
+      total: o.total,
+      notes: o.notes,
+      created_by_name: o.created_by_name,
+      sent_by_name: o.sent_by_name,
+      sent_at: o.sent_at,
+      reviewed_by_name: o.reviewed_by_name,
+      reviewed_at: o.reviewed_at,
+    });
+
+  const viewPDF = (o: Order) => {
+    const doc = buildPDF(o);
+    window.open(doc.output("bloburl"), "_blank");
+  };
+
+  const downloadPDF = (o: Order) => {
+    buildPDF(o).save(`${o.quotation_number}.pdf`);
+  };
+
   return (
     <AppShell>
       <div className="space-y-6">
