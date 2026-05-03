@@ -21,10 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Eye, FileText, Send, ThumbsUp } from "lucide-react";
+import { Download, Eye, FileText, Printer, Send, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyError, useAuth } from "@/lib/auth-context";
 import type { QuotationLine } from "@/lib/quotation";
+import { generateQuotationPDF } from "@/lib/quotation-pdf";
 
 export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
