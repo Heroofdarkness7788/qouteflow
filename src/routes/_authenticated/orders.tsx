@@ -21,10 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Eye, FileText, Send, ThumbsUp } from "lucide-react";
+import { Download, Eye, FileText, Printer, Send, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyError, useAuth } from "@/lib/auth-context";
 import type { QuotationLine } from "@/lib/quotation";
+import { generateQuotationPDF } from "@/lib/quotation-pdf";
 
 export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
@@ -153,6 +154,35 @@ function OrdersPage() {
     window.open(data.signedUrl, "_blank");
   };
 
+  const buildPDF = (o: Order) =>
+    generateQuotationPDF({
+      quotation_number: o.quotation_number,
+      date: new Date(o.created_at).toLocaleDateString(),
+      customer_name: o.customer_name,
+      customer_email: o.customer_email,
+      currency: o.currency,
+      lines: o.matched_items ?? [],
+      subtotal: o.subtotal,
+      tax_rate: o.tax_rate,
+      tax_amount: o.tax_amount,
+      total: o.total,
+      notes: o.notes,
+      created_by_name: o.created_by_name,
+      sent_by_name: o.sent_by_name,
+      sent_at: o.sent_at,
+      reviewed_by_name: o.reviewed_by_name,
+      reviewed_at: o.reviewed_at,
+    });
+
+  const viewPDF = (o: Order) => {
+    const doc = buildPDF(o);
+    window.open(doc.output("bloburl"), "_blank");
+  };
+
+  const downloadPDF = (o: Order) => {
+    buildPDF(o).save(`${o.quotation_number}.pdf`);
+  };
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -245,6 +275,14 @@ function OrdersPage() {
                       <Button size="sm" variant="outline" onClick={() => setReviewing(o)}>
                         <Eye className="mr-2 h-4 w-4" />
                         Review
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => viewPDF(o)}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        View/Print
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => downloadPDF(o)}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        PDF
                       </Button>
                       {o.quotation_file_path && (
                         <Button size="sm" variant="outline" onClick={() => download(o)}>
@@ -349,6 +387,10 @@ function OrdersPage() {
               </div>
 
               <DialogFooter>
+                <Button variant="outline" onClick={() => viewPDF(reviewing)}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  View/Print
+                </Button>
                 <Button variant="outline" onClick={() => setReviewing(null)}>
                   Cancel
                 </Button>
