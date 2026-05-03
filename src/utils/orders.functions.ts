@@ -105,6 +105,28 @@ export const extractOrderFromEmail = createServerFn({ method: "POST" })
     ];
 
     for (const att of data.attachments) {
+      const isExcel =
+        att.mime_type.includes("spreadsheet") ||
+        att.mime_type === "application/vnd.ms-excel" ||
+        /\.(xlsx|xls|csv)$/i.test(att.name);
+      if (isExcel) {
+        try {
+          const XLSX = await import("xlsx");
+          const buf = Uint8Array.from(atob(att.data), (c) => c.charCodeAt(0));
+          const wb = XLSX.read(buf, { type: "array" });
+          const sheets = wb.SheetNames.map((name) => {
+            const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name]);
+            return `--- Sheet: ${name} ---\n${csv}`;
+          }).join("\n\n");
+          userParts.push({
+            type: "text",
+            text: `Attachment "${att.name}" (parsed as CSV):\n${sheets}`,
+          });
+        } catch (e) {
+          console.error("Failed to parse spreadsheet attachment", att.name, e);
+        }
+        continue;
+      }
       const dataUrl = `data:${att.mime_type};base64,${att.data}`;
       if (att.mime_type.startsWith("image/")) {
         userParts.push({ type: "image_url", image_url: { url: dataUrl } });
@@ -115,6 +137,7 @@ export const extractOrderFromEmail = createServerFn({ method: "POST" })
         });
       }
     }
+
 
     const body = {
       model: "google/gemini-2.5-flash",
