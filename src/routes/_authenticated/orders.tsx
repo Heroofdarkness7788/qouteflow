@@ -276,6 +276,14 @@ function OrdersPage() {
                         <Eye className="mr-2 h-4 w-4" />
                         Review
                       </Button>
+                      <Button size="sm" variant="outline" onClick={() => viewPDF(o)}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        View/Print
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => downloadPDF(o)}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        PDF
+                      </Button>
                       {o.quotation_file_path && (
                         <Button size="sm" variant="outline" onClick={() => download(o)}>
                           <Download className="mr-2 h-4 w-4" />
