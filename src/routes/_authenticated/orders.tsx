@@ -5,9 +5,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Send } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Download, Eye, FileText, Send, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyError, useAuth } from "@/lib/auth-context";
+import type { QuotationLine } from "@/lib/quotation";
 
 export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
@@ -21,44 +38,55 @@ type Order = {
   customer_email: string | null;
   email_subject: string | null;
   total: number;
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
   currency: string;
   status: string;
+  notes: string | null;
+  matched_items: QuotationLine[] | null;
   quotation_file_path: string | null;
   unmatched_skus: string[] | null;
   created_at: string;
   sent_at: string | null;
   created_by_name: string | null;
   sent_by_name: string | null;
+  reviewed_at: string | null;
+  reviewed_by_name: string | null;
 };
 
 function OrdersPage() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [reviewing, setReviewing] = useState<Order | null>(null);
+  const [approving, setApproving] = useState(false);
 
   useEffect(() => {
     supabase
       .from("orders")
       .select(
-        "id,quotation_number,customer_name,customer_email,email_subject,total,currency,status,quotation_file_path,unmatched_skus,created_at,sent_at,created_by_name,sent_by_name",
+        "id,quotation_number,customer_name,customer_email,email_subject,total,subtotal,tax_rate,tax_amount,currency,status,notes,matched_items,quotation_file_path,unmatched_skus,created_at,sent_at,created_by_name,sent_by_name,reviewed_at,reviewed_by_name",
       )
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
         if (error) toast.error(friendlyError(error, "Failed to load orders"));
-        else setOrders((data ?? []) as Order[]);
+        else setOrders((data ?? []) as unknown as Order[]);
       });
   }, []);
 
+  const getMyName = async (): Promise<string | null> => {
+    if (!user?.id) return null;
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", user.id)
+      .maybeSingle();
+    return prof?.full_name?.trim() || prof?.email || null;
+  };
+
   const markAsSent = async (o: Order) => {
     const sentAt = new Date().toISOString();
-    let sentByName: string | null = null;
-    if (user?.id) {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("full_name, email")
-        .eq("id", user.id)
-        .maybeSingle();
-      sentByName = prof?.full_name?.trim() || prof?.email || null;
-    }
+    const sentByName = await getMyName();
     const { error } = await supabase
       .from("orders")
       .update({
@@ -82,6 +110,37 @@ function OrdersPage() {
     toast.success(`${o.quotation_number} marked as sent`);
   };
 
+  const approveReview = async () => {
+    if (!reviewing) return;
+    setApproving(true);
+    try {
+      const reviewedAt = new Date().toISOString();
+      const reviewedByName = await getMyName();
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          reviewed_at: reviewedAt,
+          reviewed_by: user?.id ?? null,
+          reviewed_by_name: reviewedByName,
+        })
+        .eq("id", reviewing.id);
+      if (error) throw error;
+      setOrders((prev) =>
+        prev.map((x) =>
+          x.id === reviewing.id
+            ? { ...x, reviewed_at: reviewedAt, reviewed_by_name: reviewedByName }
+            : x,
+        ),
+      );
+      toast.success(`${reviewing.quotation_number} approved`);
+      setReviewing(null);
+    } catch (e) {
+      toast.error(friendlyError(e, "Failed to approve"));
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const download = async (o: Order) => {
     if (!o.quotation_file_path) return;
     const { data, error } = await supabase.storage
@@ -100,8 +159,7 @@ function OrdersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
           <p className="text-sm text-muted-foreground">
-            All quotations generated so far. Download the Excel file and attach it
-            to your Gmail reply.
+            All quotations generated so far. Review, download the Excel and Zoho CSV, then mark as sent.
           </p>
         </div>
 
@@ -124,11 +182,16 @@ function OrdersPage() {
               <Card key={o.id} className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="font-mono text-sm font-medium">
                         {o.quotation_number}
                       </p>
                       <Badge variant="secondary">{o.status}</Badge>
+                      {o.reviewed_at && (
+                        <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                          Reviewed & Approved
+                        </Badge>
+                      )}
                       {o.unmatched_skus && o.unmatched_skus.length > 0 && (
                         <Badge variant="destructive">
                           {o.unmatched_skus.length} unmatched
@@ -157,6 +220,14 @@ function OrdersPage() {
                         <span> · by {o.created_by_name}</span>
                       )}
                     </p>
+                    {o.reviewed_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Reviewed & approved {new Date(o.reviewed_at).toLocaleString()}
+                        {o.reviewed_by_name && (
+                          <span> · by {o.reviewed_by_name}</span>
+                        )}
+                      </p>
+                    )}
                     {o.sent_at && (
                       <p className="text-xs text-muted-foreground">
                         Sent {new Date(o.sent_at).toLocaleString()}
@@ -170,7 +241,11 @@ function OrdersPage() {
                     <p className="text-lg font-semibold tabular-nums">
                       {o.currency} {o.total.toFixed(2)}
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setReviewing(o)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Review
+                      </Button>
                       {o.quotation_file_path && (
                         <Button size="sm" variant="outline" onClick={() => download(o)}>
                           <Download className="mr-2 h-4 w-4" />
@@ -191,6 +266,101 @@ function OrdersPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!reviewing} onOpenChange={(open) => !open && setReviewing(null)}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          {reviewing && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-mono">{reviewing.quotation_number}</DialogTitle>
+                <DialogDescription>
+                  {reviewing.customer_name ?? "Unknown customer"}
+                  {reviewing.customer_email && ` · ${reviewing.customer_email}`}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {reviewing.reviewed_at && (
+                  <div className="rounded-md border border-emerald-600/50 bg-emerald-600/10 p-3 text-sm">
+                    Already reviewed & approved by{" "}
+                    <span className="font-medium">{reviewing.reviewed_by_name ?? "—"}</span>{" "}
+                    on {new Date(reviewing.reviewed_at).toLocaleString()}
+                  </div>
+                )}
+
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>SKU</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Sell</TableHead>
+                        <TableHead className="text-right">Disc %</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(reviewing.matched_items ?? []).map((l, i) => {
+                        const sell = +(l.unit_price * (1 + (l.margin_pct || 0) / 100)).toFixed(2);
+                        return (
+                          <TableRow key={i}>
+                            <TableCell className="font-mono text-xs">{l.sku}</TableCell>
+                            <TableCell className="text-sm">{l.description}</TableCell>
+                            <TableCell className="text-right tabular-nums">{l.quantity}</TableCell>
+                            <TableCell className="text-right tabular-nums">{sell.toFixed(2)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{l.discount_pct}</TableCell>
+                            <TableCell className="text-right tabular-nums font-medium">
+                              {l.line_total.toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex flex-col items-end gap-1 border-t border-border pt-3 text-sm tabular-nums">
+                  <div className="flex w-64 justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{reviewing.currency} {reviewing.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex w-64 justify-between">
+                    <span className="text-muted-foreground">Tax ({reviewing.tax_rate}%)</span>
+                    <span>{reviewing.currency} {reviewing.tax_amount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex w-64 justify-between text-base font-semibold">
+                    <span>Total</span>
+                    <span>{reviewing.currency} {reviewing.total.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {reviewing.notes && (
+                  <div className="rounded-md border border-border p-3 text-sm">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Notes</p>
+                    {reviewing.notes}
+                  </div>
+                )}
+
+                <div className="text-xs text-muted-foreground">
+                  Created by {reviewing.created_by_name ?? "—"} on{" "}
+                  {new Date(reviewing.created_at).toLocaleString()}
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setReviewing(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={approveReview} disabled={approving || !!reviewing.reviewed_at}>
+                  <ThumbsUp className="mr-2 h-4 w-4" />
+                  {reviewing.reviewed_at ? "Already approved" : approving ? "Approving..." : "Approve"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
