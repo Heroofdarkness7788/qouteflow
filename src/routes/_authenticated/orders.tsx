@@ -21,7 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Eye, FileText, Printer, Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Download, Eye, FileText, Printer, Send, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -67,6 +77,27 @@ function OrdersPage() {
   const [rejecting, setRejecting] = useState(false);
   const [remarks, setRemarks] = useState("");
   const [remarksError, setRemarksError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Order | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
+
+  const deleteOrder = async () => {
+    if (!deleting) return;
+    setDeletingBusy(true);
+    try {
+      if (deleting.quotation_file_path) {
+        await supabase.storage.from("quotations").remove([deleting.quotation_file_path]);
+      }
+      const { error } = await supabase.from("orders").delete().eq("id", deleting.id);
+      if (error) throw error;
+      setOrders((prev) => prev.filter((x) => x.id !== deleting.id));
+      toast.success(`${deleting.quotation_number} deleted`);
+      setDeleting(null);
+    } catch (e) {
+      toast.error(friendlyError(e, "Failed to delete"));
+    } finally {
+      setDeletingBusy(false);
+    }
+  };
 
   useEffect(() => {
     supabase
@@ -329,6 +360,15 @@ function OrdersPage() {
                           Mark as Sent
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleting(o)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -487,6 +527,32 @@ function OrdersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && !deletingBusy && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete quotation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes{" "}
+              <span className="font-mono">{deleting?.quotation_number}</span>
+              {deleting?.quotation_file_path && " and its Excel file"}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                deleteOrder();
+              }}
+              disabled={deletingBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingBusy ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
