@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Eye, FileText, Printer, Send, ThumbsUp } from "lucide-react";
+import { Download, Eye, FileText, Printer, Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -64,7 +64,9 @@ function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [reviewing, setReviewing] = useState<Order | null>(null);
   const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [remarks, setRemarks] = useState("");
+  const [remarksError, setRemarksError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -115,21 +117,29 @@ function OrdersPage() {
     toast.success(`${o.quotation_number} marked as sent`);
   };
 
-  const approveReview = async () => {
+  const submitReview = async (decision: "approve" | "reject") => {
     if (!reviewing) return;
-    setApproving(true);
+    const trimmedRemarks = remarks.trim();
+    if (decision === "reject" && !trimmedRemarks) {
+      setRemarksError("Remarks are required when rejecting an order.");
+      return;
+    }
+    setRemarksError(null);
+    const isApprove = decision === "approve";
+    isApprove ? setApproving(true) : setRejecting(true);
     try {
       const reviewedAt = new Date().toISOString();
       const reviewedByName = await getMyName();
-      const trimmedRemarks = remarks.trim() || null;
+      const remarksValue = trimmedRemarks || null;
+      const baseUpdate = {
+        reviewed_at: reviewedAt,
+        reviewed_by: user?.id ?? null,
+        reviewed_by_name: reviewedByName,
+        review_remarks: remarksValue,
+      };
       const { error } = await supabase
         .from("orders")
-        .update({
-          reviewed_at: reviewedAt,
-          reviewed_by: user?.id ?? null,
-          reviewed_by_name: reviewedByName,
-          review_remarks: trimmedRemarks,
-        })
+        .update(isApprove ? baseUpdate : { ...baseUpdate, status: "rejected" })
         .eq("id", reviewing.id);
       if (error) throw error;
       setOrders((prev) =>
@@ -137,20 +147,23 @@ function OrdersPage() {
           x.id === reviewing.id
             ? {
                 ...x,
+                ...(isApprove ? {} : { status: "rejected" }),
                 reviewed_at: reviewedAt,
                 reviewed_by_name: reviewedByName,
-                review_remarks: trimmedRemarks,
+                review_remarks: remarksValue,
               }
             : x,
         ),
       );
-      toast.success(`${reviewing.quotation_number} approved`);
+      toast.success(
+        `${reviewing.quotation_number} ${isApprove ? "approved" : "rejected"}`,
+      );
       setReviewing(null);
       setRemarks("");
     } catch (e) {
-      toast.error(friendlyError(e, "Failed to approve"));
+      toast.error(friendlyError(e, isApprove ? "Failed to approve" : "Failed to reject"));
     } finally {
-      setApproving(false);
+      isApprove ? setApproving(false) : setRejecting(false);
     }
   };
 
@@ -405,14 +418,23 @@ function OrdersPage() {
 
                 {!reviewing.reviewed_at && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="review-remarks">Remarks</Label>
+                    <Label htmlFor="review-remarks">
+                      Remarks <span className="text-muted-foreground">(required to reject)</span>
+                    </Label>
                     <Textarea
                       id="review-remarks"
-                      placeholder="Add comments to record alongside the approval (optional)"
+                      placeholder="Add comments to record alongside the decision"
                       value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
+                      onChange={(e) => {
+                        setRemarks(e.target.value);
+                        if (remarksError && e.target.value.trim()) setRemarksError(null);
+                      }}
                       rows={3}
+                      aria-invalid={!!remarksError}
                     />
+                    {remarksError && (
+                      <p className="text-xs font-medium text-destructive">{remarksError}</p>
+                    )}
                   </div>
                 )}
 
@@ -435,9 +457,20 @@ function OrdersPage() {
                   View/Print
                 </Button>
                 <Button variant="outline" onClick={() => setReviewing(null)}>
-                  Cancel
+                  Close
                 </Button>
-                <Button onClick={approveReview} disabled={approving || !!reviewing.reviewed_at}>
+                <Button
+                  variant="destructive"
+                  onClick={() => submitReview("reject")}
+                  disabled={rejecting || approving || !!reviewing.reviewed_at}
+                >
+                  <ThumbsDown className="mr-2 h-4 w-4" />
+                  {rejecting ? "Rejecting..." : "Reject"}
+                </Button>
+                <Button
+                  onClick={() => submitReview("approve")}
+                  disabled={approving || rejecting || !!reviewing.reviewed_at}
+                >
                   <ThumbsUp className="mr-2 h-4 w-4" />
                   {reviewing.reviewed_at ? "Already approved" : approving ? "Approving..." : "Approve"}
                 </Button>
