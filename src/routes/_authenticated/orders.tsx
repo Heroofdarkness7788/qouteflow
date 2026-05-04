@@ -142,6 +142,14 @@ function OrdersPage() {
         .update(isApprove ? baseUpdate : { ...baseUpdate, status: "rejected" })
         .eq("id", reviewing.id);
       if (error) throw error;
+      const { error: auditError } = await supabase.from("order_audit_logs").insert({
+        order_id: reviewing.id,
+        action: isApprove ? "approved" : "rejected",
+        actor_id: user?.id ?? null,
+        actor_name: reviewedByName,
+        remarks: remarksValue,
+      });
+      if (auditError) console.error("Failed to write audit log", auditError);
       setOrders((prev) =>
         prev.map((x) =>
           x.id === reviewing.id
