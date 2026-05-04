@@ -317,7 +317,17 @@ function OrdersPage() {
         )}
       </div>
 
-      <Dialog open={!!reviewing} onOpenChange={(open) => !open && setReviewing(null)}>
+      <Dialog
+        open={!!reviewing}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReviewing(null);
+            setRemarks("");
+          } else if (reviewing) {
+            setRemarks(reviewing.review_remarks ?? "");
+          }
+        }}
+      >
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           {reviewing && (
             <>
@@ -332,9 +342,17 @@ function OrdersPage() {
               <div className="space-y-4">
                 {reviewing.reviewed_at && (
                   <div className="rounded-md border border-emerald-600/50 bg-emerald-600/10 p-3 text-sm">
-                    Already reviewed & approved by{" "}
-                    <span className="font-medium">{reviewing.reviewed_by_name ?? "—"}</span>{" "}
-                    on {new Date(reviewing.reviewed_at).toLocaleString()}
+                    <p>
+                      Already reviewed & approved by{" "}
+                      <span className="font-medium">{reviewing.reviewed_by_name ?? "—"}</span>{" "}
+                      on {new Date(reviewing.reviewed_at).toLocaleString()}
+                    </p>
+                    {reviewing.review_remarks && (
+                      <p className="mt-2">
+                        <span className="font-medium">Remarks:</span>{" "}
+                        {reviewing.review_remarks}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -384,6 +402,19 @@ function OrdersPage() {
                     <span>{reviewing.currency} {reviewing.total.toFixed(2)}</span>
                   </div>
                 </div>
+
+                {!reviewing.reviewed_at && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="review-remarks">Remarks</Label>
+                    <Textarea
+                      id="review-remarks"
+                      placeholder="Add comments to record alongside the approval (optional)"
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                )}
 
                 {reviewing.notes && (
                   <div className="rounded-md border border-border p-3 text-sm">
