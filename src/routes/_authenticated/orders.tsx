@@ -121,24 +121,32 @@ function OrdersPage() {
     try {
       const reviewedAt = new Date().toISOString();
       const reviewedByName = await getMyName();
+      const trimmedRemarks = remarks.trim() || null;
       const { error } = await supabase
         .from("orders")
         .update({
           reviewed_at: reviewedAt,
           reviewed_by: user?.id ?? null,
           reviewed_by_name: reviewedByName,
+          review_remarks: trimmedRemarks,
         })
         .eq("id", reviewing.id);
       if (error) throw error;
       setOrders((prev) =>
         prev.map((x) =>
           x.id === reviewing.id
-            ? { ...x, reviewed_at: reviewedAt, reviewed_by_name: reviewedByName }
+            ? {
+                ...x,
+                reviewed_at: reviewedAt,
+                reviewed_by_name: reviewedByName,
+                review_remarks: trimmedRemarks,
+              }
             : x,
         ),
       );
       toast.success(`${reviewing.quotation_number} approved`);
       setReviewing(null);
+      setRemarks("");
     } catch (e) {
       toast.error(friendlyError(e, "Failed to approve"));
     } finally {
