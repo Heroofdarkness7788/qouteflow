@@ -21,7 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Eye, FileText, Printer, Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Download, Eye, FileText, Printer, Send, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -67,6 +77,27 @@ function OrdersPage() {
   const [rejecting, setRejecting] = useState(false);
   const [remarks, setRemarks] = useState("");
   const [remarksError, setRemarksError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Order | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
+
+  const deleteOrder = async () => {
+    if (!deleting) return;
+    setDeletingBusy(true);
+    try {
+      if (deleting.quotation_file_path) {
+        await supabase.storage.from("quotations").remove([deleting.quotation_file_path]);
+      }
+      const { error } = await supabase.from("orders").delete().eq("id", deleting.id);
+      if (error) throw error;
+      setOrders((prev) => prev.filter((x) => x.id !== deleting.id));
+      toast.success(`${deleting.quotation_number} deleted`);
+      setDeleting(null);
+    } catch (e) {
+      toast.error(friendlyError(e, "Failed to delete"));
+    } finally {
+      setDeletingBusy(false);
+    }
+  };
 
   useEffect(() => {
     supabase
