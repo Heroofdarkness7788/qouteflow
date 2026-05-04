@@ -360,6 +360,15 @@ function OrdersPage() {
                           Mark as Sent
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleting(o)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </div>
