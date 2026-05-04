@@ -131,16 +131,15 @@ function OrdersPage() {
       const reviewedAt = new Date().toISOString();
       const reviewedByName = await getMyName();
       const remarksValue = trimmedRemarks || null;
-      const update: Record<string, unknown> = {
+      const baseUpdate = {
         reviewed_at: reviewedAt,
         reviewed_by: user?.id ?? null,
         reviewed_by_name: reviewedByName,
         review_remarks: remarksValue,
       };
-      if (!isApprove) update.status = "rejected";
       const { error } = await supabase
         .from("orders")
-        .update(update)
+        .update(isApprove ? baseUpdate : { ...baseUpdate, status: "rejected" })
         .eq("id", reviewing.id);
       if (error) throw error;
       setOrders((prev) =>
@@ -419,14 +418,23 @@ function OrdersPage() {
 
                 {!reviewing.reviewed_at && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="review-remarks">Remarks</Label>
+                    <Label htmlFor="review-remarks">
+                      Remarks <span className="text-muted-foreground">(required to reject)</span>
+                    </Label>
                     <Textarea
                       id="review-remarks"
-                      placeholder="Add comments to record alongside the approval (optional)"
+                      placeholder="Add comments to record alongside the decision"
                       value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
+                      onChange={(e) => {
+                        setRemarks(e.target.value);
+                        if (remarksError && e.target.value.trim()) setRemarksError(null);
+                      }}
                       rows={3}
+                      aria-invalid={!!remarksError}
                     />
+                    {remarksError && (
+                      <p className="text-xs font-medium text-destructive">{remarksError}</p>
+                    )}
                   </div>
                 )}
 
@@ -449,9 +457,20 @@ function OrdersPage() {
                   View/Print
                 </Button>
                 <Button variant="outline" onClick={() => setReviewing(null)}>
-                  Cancel
+                  Close
                 </Button>
-                <Button onClick={approveReview} disabled={approving || !!reviewing.reviewed_at}>
+                <Button
+                  variant="destructive"
+                  onClick={() => submitReview("reject")}
+                  disabled={rejecting || approving || !!reviewing.reviewed_at}
+                >
+                  <ThumbsDown className="mr-2 h-4 w-4" />
+                  {rejecting ? "Rejecting..." : "Reject"}
+                </Button>
+                <Button
+                  onClick={() => submitReview("approve")}
+                  disabled={approving || rejecting || !!reviewing.reviewed_at}
+                >
                   <ThumbsUp className="mr-2 h-4 w-4" />
                   {reviewing.reviewed_at ? "Already approved" : approving ? "Approving..." : "Approve"}
                 </Button>
