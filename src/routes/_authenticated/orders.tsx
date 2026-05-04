@@ -22,6 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Download, Eye, FileText, Printer, Send, ThumbsUp } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { friendlyError, useAuth } from "@/lib/auth-context";
 import type { QuotationLine } from "@/lib/quotation";
@@ -54,6 +56,7 @@ type Order = {
   sent_by_name: string | null;
   reviewed_at: string | null;
   reviewed_by_name: string | null;
+  review_remarks: string | null;
 };
 
 function OrdersPage() {
@@ -61,12 +64,13 @@ function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [reviewing, setReviewing] = useState<Order | null>(null);
   const [approving, setApproving] = useState(false);
+  const [remarks, setRemarks] = useState("");
 
   useEffect(() => {
     supabase
       .from("orders")
       .select(
-        "id,quotation_number,customer_name,customer_email,email_subject,total,subtotal,tax_rate,tax_amount,currency,status,notes,matched_items,quotation_file_path,unmatched_skus,created_at,sent_at,created_by_name,sent_by_name,reviewed_at,reviewed_by_name",
+        "id,quotation_number,customer_name,customer_email,email_subject,total,subtotal,tax_rate,tax_amount,currency,status,notes,matched_items,quotation_file_path,unmatched_skus,created_at,sent_at,created_by_name,sent_by_name,reviewed_at,reviewed_by_name,review_remarks",
       )
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -117,24 +121,32 @@ function OrdersPage() {
     try {
       const reviewedAt = new Date().toISOString();
       const reviewedByName = await getMyName();
+      const trimmedRemarks = remarks.trim() || null;
       const { error } = await supabase
         .from("orders")
         .update({
           reviewed_at: reviewedAt,
           reviewed_by: user?.id ?? null,
           reviewed_by_name: reviewedByName,
+          review_remarks: trimmedRemarks,
         })
         .eq("id", reviewing.id);
       if (error) throw error;
       setOrders((prev) =>
         prev.map((x) =>
           x.id === reviewing.id
-            ? { ...x, reviewed_at: reviewedAt, reviewed_by_name: reviewedByName }
+            ? {
+                ...x,
+                reviewed_at: reviewedAt,
+                reviewed_by_name: reviewedByName,
+                review_remarks: trimmedRemarks,
+              }
             : x,
         ),
       );
       toast.success(`${reviewing.quotation_number} approved`);
       setReviewing(null);
+      setRemarks("");
     } catch (e) {
       toast.error(friendlyError(e, "Failed to approve"));
     } finally {
@@ -305,7 +317,17 @@ function OrdersPage() {
         )}
       </div>
 
-      <Dialog open={!!reviewing} onOpenChange={(open) => !open && setReviewing(null)}>
+      <Dialog
+        open={!!reviewing}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReviewing(null);
+            setRemarks("");
+          } else if (reviewing) {
+            setRemarks(reviewing.review_remarks ?? "");
+          }
+        }}
+      >
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           {reviewing && (
             <>
@@ -320,9 +342,17 @@ function OrdersPage() {
               <div className="space-y-4">
                 {reviewing.reviewed_at && (
                   <div className="rounded-md border border-emerald-600/50 bg-emerald-600/10 p-3 text-sm">
-                    Already reviewed & approved by{" "}
-                    <span className="font-medium">{reviewing.reviewed_by_name ?? "—"}</span>{" "}
-                    on {new Date(reviewing.reviewed_at).toLocaleString()}
+                    <p>
+                      Already reviewed & approved by{" "}
+                      <span className="font-medium">{reviewing.reviewed_by_name ?? "—"}</span>{" "}
+                      on {new Date(reviewing.reviewed_at).toLocaleString()}
+                    </p>
+                    {reviewing.review_remarks && (
+                      <p className="mt-2">
+                        <span className="font-medium">Remarks:</span>{" "}
+                        {reviewing.review_remarks}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -372,6 +402,19 @@ function OrdersPage() {
                     <span>{reviewing.currency} {reviewing.total.toFixed(2)}</span>
                   </div>
                 </div>
+
+                {!reviewing.reviewed_at && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="review-remarks">Remarks</Label>
+                    <Textarea
+                      id="review-remarks"
+                      placeholder="Add comments to record alongside the approval (optional)"
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                )}
 
                 {reviewing.notes && (
                   <div className="rounded-md border border-border p-3 text-sm">

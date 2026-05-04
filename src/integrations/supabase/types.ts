@@ -31,6 +31,7 @@ export type Database = {
           notes: string | null
           quotation_file_path: string | null
           quotation_number: string
+          review_remarks: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           reviewed_by_name: string | null
@@ -65,6 +66,7 @@ export type Database = {
           notes?: string | null
           quotation_file_path?: string | null
           quotation_number: string
+          review_remarks?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           reviewed_by_name?: string | null
@@ -99,6 +101,7 @@ export type Database = {
           notes?: string | null
           quotation_file_path?: string | null
           quotation_number?: string
+          review_remarks?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           reviewed_by_name?: string | null
