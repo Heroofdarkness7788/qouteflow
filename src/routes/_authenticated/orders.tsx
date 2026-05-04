@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Eye, FileText, Printer, Send, ThumbsUp } from "lucide-react";
+import { Download, Eye, FileText, Printer, Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -64,7 +64,9 @@ function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [reviewing, setReviewing] = useState<Order | null>(null);
   const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [remarks, setRemarks] = useState("");
+  const [remarksError, setRemarksError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -115,21 +117,30 @@ function OrdersPage() {
     toast.success(`${o.quotation_number} marked as sent`);
   };
 
-  const approveReview = async () => {
+  const submitReview = async (decision: "approve" | "reject") => {
     if (!reviewing) return;
-    setApproving(true);
+    const trimmedRemarks = remarks.trim();
+    if (decision === "reject" && !trimmedRemarks) {
+      setRemarksError("Remarks are required when rejecting an order.");
+      return;
+    }
+    setRemarksError(null);
+    const isApprove = decision === "approve";
+    isApprove ? setApproving(true) : setRejecting(true);
     try {
       const reviewedAt = new Date().toISOString();
       const reviewedByName = await getMyName();
-      const trimmedRemarks = remarks.trim() || null;
+      const remarksValue = trimmedRemarks || null;
+      const update: Record<string, unknown> = {
+        reviewed_at: reviewedAt,
+        reviewed_by: user?.id ?? null,
+        reviewed_by_name: reviewedByName,
+        review_remarks: remarksValue,
+      };
+      if (!isApprove) update.status = "rejected";
       const { error } = await supabase
         .from("orders")
-        .update({
-          reviewed_at: reviewedAt,
-          reviewed_by: user?.id ?? null,
-          reviewed_by_name: reviewedByName,
-          review_remarks: trimmedRemarks,
-        })
+        .update(update)
         .eq("id", reviewing.id);
       if (error) throw error;
       setOrders((prev) =>
@@ -137,20 +148,23 @@ function OrdersPage() {
           x.id === reviewing.id
             ? {
                 ...x,
+                ...(isApprove ? {} : { status: "rejected" }),
                 reviewed_at: reviewedAt,
                 reviewed_by_name: reviewedByName,
-                review_remarks: trimmedRemarks,
+                review_remarks: remarksValue,
               }
             : x,
         ),
       );
-      toast.success(`${reviewing.quotation_number} approved`);
+      toast.success(
+        `${reviewing.quotation_number} ${isApprove ? "approved" : "rejected"}`,
+      );
       setReviewing(null);
       setRemarks("");
     } catch (e) {
-      toast.error(friendlyError(e, "Failed to approve"));
+      toast.error(friendlyError(e, isApprove ? "Failed to approve" : "Failed to reject"));
     } finally {
-      setApproving(false);
+      isApprove ? setApproving(false) : setRejecting(false);
     }
   };
 
