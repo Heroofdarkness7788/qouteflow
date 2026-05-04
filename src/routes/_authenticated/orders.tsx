@@ -22,6 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Download, Eye, FileText, Printer, Send, ThumbsUp } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { friendlyError, useAuth } from "@/lib/auth-context";
 import type { QuotationLine } from "@/lib/quotation";
@@ -54,6 +56,7 @@ type Order = {
   sent_by_name: string | null;
   reviewed_at: string | null;
   reviewed_by_name: string | null;
+  review_remarks: string | null;
 };
 
 function OrdersPage() {
@@ -61,12 +64,13 @@ function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [reviewing, setReviewing] = useState<Order | null>(null);
   const [approving, setApproving] = useState(false);
+  const [remarks, setRemarks] = useState("");
 
   useEffect(() => {
     supabase
       .from("orders")
       .select(
-        "id,quotation_number,customer_name,customer_email,email_subject,total,subtotal,tax_rate,tax_amount,currency,status,notes,matched_items,quotation_file_path,unmatched_skus,created_at,sent_at,created_by_name,sent_by_name,reviewed_at,reviewed_by_name",
+        "id,quotation_number,customer_name,customer_email,email_subject,total,subtotal,tax_rate,tax_amount,currency,status,notes,matched_items,quotation_file_path,unmatched_skus,created_at,sent_at,created_by_name,sent_by_name,reviewed_at,reviewed_by_name,review_remarks",
       )
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
