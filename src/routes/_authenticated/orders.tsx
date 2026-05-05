@@ -21,7 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Eye, FileText, Printer, Send, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Pencil, Printer, Send, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
