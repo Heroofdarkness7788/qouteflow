@@ -600,6 +600,48 @@ function OrdersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={!!renaming}
+        onOpenChange={(open) => {
+          if (!open && !renamingBusy) {
+            setRenaming(null);
+            setRenameError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename quotation</DialogTitle>
+            <DialogDescription>
+              Update the quotation number for{" "}
+              <span className="font-mono">{renaming?.quotation_number}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="rename-qno">Quotation number</Label>
+            <Input
+              id="rename-qno"
+              value={newQuotationNumber}
+              onChange={(e) => {
+                setNewQuotationNumber(e.target.value);
+                if (renameError) setRenameError(null);
+              }}
+              aria-invalid={!!renameError}
+            />
+            {renameError && (
+              <p className="text-xs font-medium text-destructive">{renameError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenaming(null)} disabled={renamingBusy}>
+              Cancel
+            </Button>
+            <Button onClick={renameQuotation} disabled={renamingBusy}>
+              {renamingBusy ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
