@@ -80,6 +80,40 @@ function OrdersPage() {
   const [remarksError, setRemarksError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Order | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [renaming, setRenaming] = useState<Order | null>(null);
+  const [newQuotationNumber, setNewQuotationNumber] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [renamingBusy, setRenamingBusy] = useState(false);
+
+  const renameQuotation = async () => {
+    if (!renaming) return;
+    const trimmed = newQuotationNumber.trim();
+    if (!trimmed) {
+      setRenameError("Quotation number is required.");
+      return;
+    }
+    if (trimmed === renaming.quotation_number) {
+      setRenaming(null);
+      return;
+    }
+    setRenamingBusy(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ quotation_number: trimmed })
+        .eq("id", renaming.id);
+      if (error) throw error;
+      setOrders((prev) =>
+        prev.map((x) => (x.id === renaming.id ? { ...x, quotation_number: trimmed } : x)),
+      );
+      toast.success(`Renamed to ${trimmed}`);
+      setRenaming(null);
+    } catch (e) {
+      setRenameError(friendlyError(e, "Failed to rename"));
+    } finally {
+      setRenamingBusy(false);
+    }
+  };
 
   const deleteOrder = async () => {
     if (!deleting) return;
