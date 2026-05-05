@@ -398,6 +398,18 @@ function OrdersPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => {
+                          setRenaming(o);
+                          setNewQuotationNumber(o.quotation_number);
+                          setRenameError(null);
+                        }}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Rename
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="text-destructive hover:text-destructive"
                         onClick={() => setDeleting(o)}
                       >
