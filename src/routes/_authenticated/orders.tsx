@@ -21,7 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Eye, FileText, Printer, Send, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Pencil, Printer, Send, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +80,40 @@ function OrdersPage() {
   const [remarksError, setRemarksError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Order | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [renaming, setRenaming] = useState<Order | null>(null);
+  const [newQuotationNumber, setNewQuotationNumber] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [renamingBusy, setRenamingBusy] = useState(false);
+
+  const renameQuotation = async () => {
+    if (!renaming) return;
+    const trimmed = newQuotationNumber.trim();
+    if (!trimmed) {
+      setRenameError("Quotation number is required.");
+      return;
+    }
+    if (trimmed === renaming.quotation_number) {
+      setRenaming(null);
+      return;
+    }
+    setRenamingBusy(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ quotation_number: trimmed })
+        .eq("id", renaming.id);
+      if (error) throw error;
+      setOrders((prev) =>
+        prev.map((x) => (x.id === renaming.id ? { ...x, quotation_number: trimmed } : x)),
+      );
+      toast.success(`Renamed to ${trimmed}`);
+      setRenaming(null);
+    } catch (e) {
+      setRenameError(friendlyError(e, "Failed to rename"));
+    } finally {
+      setRenamingBusy(false);
+    }
+  };
 
   const deleteOrder = async () => {
     if (!deleting) return;
@@ -363,6 +398,18 @@ function OrdersPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => {
+                          setRenaming(o);
+                          setNewQuotationNumber(o.quotation_number);
+                          setRenameError(null);
+                        }}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Rename
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="text-destructive hover:text-destructive"
                         onClick={() => setDeleting(o)}
                       >
@@ -553,6 +600,48 @@ function OrdersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={!!renaming}
+        onOpenChange={(open) => {
+          if (!open && !renamingBusy) {
+            setRenaming(null);
+            setRenameError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename quotation</DialogTitle>
+            <DialogDescription>
+              Update the quotation number for{" "}
+              <span className="font-mono">{renaming?.quotation_number}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="rename-qno">Quotation number</Label>
+            <Input
+              id="rename-qno"
+              value={newQuotationNumber}
+              onChange={(e) => {
+                setNewQuotationNumber(e.target.value);
+                if (renameError) setRenameError(null);
+              }}
+              aria-invalid={!!renameError}
+            />
+            {renameError && (
+              <p className="text-xs font-medium text-destructive">{renameError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenaming(null)} disabled={renamingBusy}>
+              Cancel
+            </Button>
+            <Button onClick={renameQuotation} disabled={renamingBusy}>
+              {renamingBusy ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
