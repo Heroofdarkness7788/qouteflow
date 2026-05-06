@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
+
 
 export const Route = createFileRoute("/_authenticated/price-list")({
   component: PriceListPage,
