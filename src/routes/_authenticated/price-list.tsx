@@ -116,16 +116,15 @@ function PriceListPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Price List</h1>
-          <p className="text-sm text-muted-foreground">
-            Upload your Excel/CSV price list. We use SKU codes to match items
-            extracted from order emails.
+          <h1 className="text-2xl font-semibold tracking-tight">Price list</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            SKU codes are matched against items extracted from order emails.
           </p>
         </div>
 
-        <Card
+        <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
@@ -137,8 +136,8 @@ function PriceListPage() {
             setIsDragActive(false);
             onDrop(Array.from(e.dataTransfer.files));
           }}
-          className={`cursor-pointer border-2 border-dashed p-8 text-center transition-colors ${
-            isDragActive ? "border-primary bg-accent" : "border-border"
+          className={`cursor-pointer rounded-lg border border-dashed p-10 text-center transition-all hover-lift ${
+            isDragActive ? "border-foreground bg-muted" : "border-border hover:border-foreground/40"
           }`}
         >
           <input
@@ -151,38 +150,37 @@ function PriceListPage() {
               e.target.value = "";
             }}
           />
-          <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm font-medium">
+          <Upload className="mx-auto mb-3 h-5 w-5 text-muted-foreground" />
+          <p className="text-sm">
             {loading
-              ? "Importing..."
+              ? "Importing…"
               : isDragActive
-                ? "Drop the file here"
-                : "Drop Excel / CSV here, or click to upload"}
+                ? "Drop to import"
+                : "Drop a file, or click to upload"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Required columns: <strong>SKU</strong> and <strong>Price</strong>. Optional:
-            Description, Unit, Currency. Existing SKUs get updated.
+            Excel or CSV with SKU and Price columns.
           </p>
-        </Card>
+        </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Input
-            placeholder="Search SKU or description..."
+            placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="sm:max-w-sm"
+            className="sm:max-w-xs border-0 border-b rounded-none px-0 shadow-none focus-visible:ring-0 focus-visible:border-foreground"
           />
-          <Button variant="outline" size="sm" onClick={addManual} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Add manually
+          <Button variant="ghost" size="sm" onClick={addManual} className="w-full sm:w-auto">
+            <Plus className="mr-1 h-4 w-4" />
+            Add item
           </Button>
         </div>
 
         {/* Desktop table */}
-        <Card className="hidden sm:block">
+        <div className="hidden sm:block animate-fade-in">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-b">
                 <TableHead>SKU</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="text-right">Price</TableHead>
@@ -194,27 +192,28 @@ function PriceListPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                    {rows.length === 0 ? "No items yet — upload a file above." : "No matches."}
+                  <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
+                    {rows.length === 0 ? "No items yet." : "No matches."}
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-mono text-sm">{r.sku}</TableCell>
+                  <TableRow key={r.id} className="row-hover group border-b border-border/60">
+                    <TableCell className="font-mono text-xs">{r.sku}</TableCell>
                     <TableCell>{r.description}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {r.unit_price.toFixed(2)}
                     </TableCell>
-                    <TableCell>{r.unit ?? "pcs"}</TableCell>
-                    <TableCell>{r.currency}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.unit ?? "pcs"}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.currency}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => remove(r.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -222,19 +221,22 @@ function PriceListPage() {
               )}
             </TableBody>
           </Table>
-        </Card>
+        </div>
 
-        {/* Mobile cards */}
-        <div className="space-y-2 sm:hidden">
+        {/* Mobile list */}
+        <div className="space-y-0 sm:hidden">
           {filtered.length === 0 ? (
-            <Card className="p-6 text-center text-sm text-muted-foreground">
-              {rows.length === 0 ? "No items yet — upload a file above." : "No matches."}
-            </Card>
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {rows.length === 0 ? "No items yet." : "No matches."}
+            </p>
           ) : (
             filtered.map((r) => (
-              <Card key={r.id} className="flex items-start justify-between gap-3 p-3">
+              <div
+                key={r.id}
+                className="flex items-start justify-between gap-3 border-b border-border/60 py-3 row-hover px-1"
+              >
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-xs font-medium">{r.sku}</p>
+                  <p className="font-mono text-xs">{r.sku}</p>
                   <p className="truncate text-sm">{r.description}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                     {r.currency} {r.unit_price.toFixed(2)} / {r.unit ?? "pcs"}
@@ -244,18 +246,18 @@ function PriceListPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => remove(r.id)}
-                  className="shrink-0"
+                  className="shrink-0 h-8 w-8"
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
-              </Card>
+              </div>
             ))
           )}
         </div>
 
         {rows.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            {rows.length} item{rows.length === 1 ? "" : "s"} in price list
+            {rows.length} item{rows.length === 1 ? "" : "s"}
           </p>
         )}
       </div>
