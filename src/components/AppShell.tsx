@@ -1,20 +1,17 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Logo } from "./Logo";
-import { Inbox, ListChecks, Database, LogOut, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "./ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const baseNav = [
-  { to: "/", label: "New Order", icon: Inbox },
-  { to: "/orders", label: "Orders", icon: ListChecks },
-  { to: "/price-list", label: "Price List", icon: Database },
+  { to: "/", label: "New" },
+  { to: "/orders", label: "Orders" },
+  { to: "/price-list", label: "Prices" },
 ] as const;
 
-const adminNav = { to: "/admin", label: "Users", icon: Users } as const;
+const adminNav = { to: "/admin", label: "Users" } as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
@@ -46,10 +43,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background pb-16 sm:pb-0">
-      <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
-          <Logo />
-          <nav className="hidden gap-1 sm:flex">
+      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-5">
+          <Link to="/" className="text-sm font-semibold tracking-tight">
+            QuoteFlow
+          </Link>
+          <nav className="hidden items-center gap-6 sm:flex">
             {nav.map((n) => {
               const active =
                 n.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(n.to);
@@ -58,41 +57,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={n.to}
                   to={n.to}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    "text-sm transition-colors",
                     active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <n.icon className="h-4 w-4" />
                   {n.label}
                 </Link>
               );
             })}
           </nav>
-          <div className="flex items-center gap-2">
-            {user?.email && (
-              <span className="hidden text-xs text-muted-foreground md:inline">
-                {user.email}
-              </span>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={signOut}
-              title="Sign out"
-              className="h-9 px-2 sm:px-3"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:ml-2 sm:inline">Sign out</span>
-            </Button>
-          </div>
+          <button
+            onClick={signOut}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Sign out
+          </button>
         </div>
       </header>
 
-      {/* Mobile bottom nav — easier thumb reach than top tabs */}
+      {/* Mobile bottom nav */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-card/95 backdrop-blur sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-background/95 backdrop-blur sm:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {nav.map((n) => {
@@ -103,20 +90,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={n.to}
               to={n.to}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors",
-                active
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground",
+                "flex flex-1 items-center justify-center py-3 text-xs transition-colors",
+                active ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              <n.icon className="h-5 w-5" />
-              <span className="leading-none">{n.label}</span>
+              {n.label}
             </Link>
           );
         })}
       </nav>
 
-      <main className="mx-auto max-w-6xl px-3 py-4 sm:px-4 sm:py-6">{children}</main>
+      <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
     </div>
   );
 }

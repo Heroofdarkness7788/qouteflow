@@ -4,8 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
-import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { friendlyError } from "@/lib/auth-context";
@@ -30,16 +28,13 @@ function SignupPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { full_name: trimmedName },
-        },
+        options: { data: { full_name: trimmedName } },
       });
       if (error) throw error;
       if (data.session) {
         toast.success("Account created");
         navigate({ to: "/" });
       } else {
-        // Fallback: sign in immediately if no session was returned
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -67,19 +62,24 @@ function SignupPage() {
     }
   };
 
+  const fieldClass =
+    "border-0 border-b rounded-none px-0 shadow-none focus-visible:ring-0 focus-visible:border-foreground";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md p-6">
-        <div className="mb-6 flex flex-col items-center gap-2">
-          <Logo />
-          <h1 className="text-xl font-semibold">Create your account</h1>
-          <p className="text-center text-sm text-muted-foreground">
-            Sign up to start generating quotations.
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="w-full max-w-sm">
+        <div className="mb-10">
+          <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Start generating quotations.
           </p>
         </div>
-        <form onSubmit={submit} className="space-y-4">
+
+        <form onSubmit={submit} className="space-y-5">
           <div className="space-y-1.5">
-            <Label htmlFor="fullName">Full name</Label>
+            <Label htmlFor="fullName" className="text-xs font-normal text-muted-foreground">
+              Full name
+            </Label>
             <Input
               id="fullName"
               type="text"
@@ -87,11 +87,13 @@ function SignupPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               autoComplete="name"
-              placeholder="Jane Doe"
+              className={fieldClass}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-xs font-normal text-muted-foreground">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
@@ -99,10 +101,13 @@ function SignupPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
+              className={fieldClass}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-xs font-normal text-muted-foreground">
+              Password
+            </Label>
             <Input
               id="password"
               type="password"
@@ -111,29 +116,29 @@ function SignupPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
+              className={fieldClass}
             />
-            <p className="text-xs text-muted-foreground">At least 8 characters.</p>
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create account
           </Button>
         </form>
-        <div className="my-4 flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-xs text-muted-foreground">or</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-        <Button variant="outline" className="w-full" onClick={google}>
+
+        <button
+          onClick={google}
+          className="mt-3 w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
           Continue with Google
-        </Button>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        </button>
+
+        <p className="mt-10 text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-primary hover:underline">
+          <Link to="/login" className="text-foreground hover:underline">
             Sign in
           </Link>
         </p>
-      </Card>
+      </div>
     </div>
   );
 }
