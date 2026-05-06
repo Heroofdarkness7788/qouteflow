@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={n.to}
                   to={n.to}
                   className={cn(
-                    "text-sm transition-colors",
+                    "link-underline text-sm transition-colors",
                     active
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground",
