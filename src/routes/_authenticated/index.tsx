@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { friendlyError, useAuth } from "@/lib/auth-context";
-import { Sparkles, Upload, X, Download, Save, Loader2, ExternalLink } from "lucide-react";
+import { Sparkles, Upload, X, Download, Save, Loader2, ExternalLink, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -34,6 +34,8 @@ import {
   sellingPrice,
   type QuotationLine,
 } from "@/lib/quotation";
+import { GmailImportDialog } from "@/components/GmailImportDialog";
+import type { GmailMessage } from "@/utils/gmail.functions";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: NewOrderPage,
@@ -83,7 +85,20 @@ function NewOrderPage() {
 
   const extract = useServerFn(extractOrderFromEmail);
   const ebaySearch = useServerFn(searchEbayBestSellers);
-  
+
+  const [gmailOpen, setGmailOpen] = useState(false);
+
+  const importFromGmail = (msg: GmailMessage) => {
+    setSubject(msg.subject);
+    setBody(msg.body);
+    // Try to extract email address from "Name <email>" header
+    const emailMatch = msg.from.match(/<([^>]+)>/);
+    if (emailMatch) setCustomerEmail(emailMatch[1]);
+    const nameMatch = msg.from.replace(/<[^>]+>/, "").trim().replace(/^"|"$/g, "");
+    if (nameMatch && !customerName) setCustomerName(nameMatch);
+    setAttachments(msg.attachments.slice(0, 5));
+    toast.success("Email imported from Gmail");
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -353,6 +368,16 @@ function NewOrderPage() {
             quantities, match them against your price list, and build a
             ready-to-send Excel quotation.
           </p>
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setGmailOpen(true)}
+          >
+            <Mail className="mr-2 h-4 w-4" /> Import from Gmail
+          </Button>
         </div>
 
         <Card className="p-4 sm:p-5">
@@ -700,6 +725,11 @@ function NewOrderPage() {
           </Card>
         )}
       </div>
+      <GmailImportDialog
+        open={gmailOpen}
+        onOpenChange={setGmailOpen}
+        onImport={importFromGmail}
+      />
     </AppShell>
   );
 }
