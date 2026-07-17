@@ -370,6 +370,16 @@ function NewOrderPage() {
           </p>
         </div>
 
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setGmailOpen(true)}
+          >
+            <Mail className="mr-2 h-4 w-4" /> Import from Gmail
+          </Button>
+        </div>
+
         <Card className="p-4 sm:p-5">
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
