@@ -725,6 +725,11 @@ function NewOrderPage() {
           </Card>
         )}
       </div>
+      <GmailImportDialog
+        open={gmailOpen}
+        onOpenChange={setGmailOpen}
+        onImport={importFromGmail}
+      />
     </AppShell>
   );
 }
