@@ -85,7 +85,20 @@ function NewOrderPage() {
 
   const extract = useServerFn(extractOrderFromEmail);
   const ebaySearch = useServerFn(searchEbayBestSellers);
-  
+
+  const [gmailOpen, setGmailOpen] = useState(false);
+
+  const importFromGmail = (msg: GmailMessage) => {
+    setSubject(msg.subject);
+    setBody(msg.body);
+    // Try to extract email address from "Name <email>" header
+    const emailMatch = msg.from.match(/<([^>]+)>/);
+    if (emailMatch) setCustomerEmail(emailMatch[1]);
+    const nameMatch = msg.from.replace(/<[^>]+>/, "").trim().replace(/^"|"$/g, "");
+    if (nameMatch && !customerName) setCustomerName(nameMatch);
+    setAttachments(msg.attachments.slice(0, 5));
+    toast.success("Email imported from Gmail");
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
