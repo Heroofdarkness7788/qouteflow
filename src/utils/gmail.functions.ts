@@ -113,7 +113,11 @@ export const getGmailStatus = createServerFn({ method: "GET" })
       connectorId: CONNECTOR_ID,
       path: "/gmail/v1/users/me/profile",
     });
-    if (!res.ok) return { connected: false as const, email: null };
+    if (!res.ok) {
+      const text = await res.text();
+      console.warn(`Gmail profile lookup failed (${res.status}): ${text.slice(0, 300)}`);
+      return { connected: true as const, email: null };
+    }
     const body = (await res.json()) as { emailAddress?: string };
     return { connected: true as const, email: body.emailAddress ?? null };
   });
@@ -182,7 +186,7 @@ export const listRecentGmail = createServerFn({ method: "GET" })
     });
     if (!listRes.ok) {
       const t = await listRes.text();
-      throw new Error(`Gmail list failed (${listRes.status}): ${t.slice(0, 200)}`);
+      throw new Error(formatGmailGatewayError("Gmail list failed", listRes.status, t));
     }
     const list = (await listRes.json()) as { messages?: Array<{ id: string; threadId: string }> };
     const ids = list.messages ?? [];
@@ -270,7 +274,7 @@ export const fetchGmailMessage = createServerFn({ method: "POST" })
     });
     if (!res.ok) {
       const t = await res.text();
-      throw new Error(`Gmail fetch failed (${res.status}): ${t.slice(0, 200)}`);
+      throw new Error(formatGmailGatewayError("Gmail fetch failed", res.status, t));
     }
     const msg = (await res.json()) as {
       id: string;
@@ -350,3 +354,20 @@ export const fetchGmailMessage = createServerFn({ method: "POST" })
       attachments: attachments.slice(0, 5),
     };
   });
+
+function formatGmailGatewayError(prefix: string, status: number, body: string): string {
+  const details = body.slice(0, 500);
+  if (/insufficient authentication scopes/i.test(body)) {
+    return `${prefix} (${status}): Gmail read permission was not granted. Disconnect Gmail, connect again, and approve read-only Gmail access.`;
+  }
+  if (/accessNotConfigured|has not been used in project|it is disabled|API has not been used/i.test(body)) {
+    return `${prefix} (${status}): Gmail API is not enabled on the Google OAuth project. Enable the Gmail API in Google Cloud, then refresh.`;
+  }
+  if (status === 401 || /invalid.?credentials|unauthorized/i.test(body)) {
+    return `${prefix} (${status}): This Gmail connection expired or was revoked. Disconnect Gmail and connect it again.`;
+  }
+  if (status === 403) {
+    return `${prefix} (${status}): Google blocked Gmail access for this OAuth app. Check that the account is an approved tester and that Gmail read-only scope is allowed.`;
+  }
+  return `${prefix} (${status}): ${details}`;
+}
