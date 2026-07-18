@@ -57,7 +57,7 @@ export function GmailImportDialog({
       const rows = await list({ data: { query: "is:unread newer_than:30d", max: 15 } });
       setMessages(rows);
     } catch (e) {
-      toast.error(friendlyError(e, "Failed to load emails"));
+      toast.error(e instanceof Error ? e.message : "Failed to load emails");
     } finally {
       setLoading(false);
     }
@@ -129,7 +129,7 @@ export function GmailImportDialog({
       onImport(full);
       onOpenChange(false);
     } catch (e) {
-      toast.error(friendlyError(e, "Failed to import email"));
+      toast.error(e instanceof Error ? e.message : "Failed to import email");
     } finally {
       setImportingId(null);
     }
