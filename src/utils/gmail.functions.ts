@@ -59,9 +59,7 @@ export const startGmailConnect = createServerFn({ method: "POST" })
   .handler(async ({ data: targetOrigin, context }) => {
     const clientKey = process.env.GOOGLE_MAIL_APP_USER_CONNECTOR_CLIENT_API_KEY;
     if (!clientKey) throw new Error("Gmail connector is not configured");
-    const { authorizeAppUserOAuth } = await import(
-      "@/integrations/lovable/appUserConnector"
-    );
+    const { authorizeAppUserOAuth } = await import("@/integrations/lovable/appUserConnector");
     const { authorizationUrl } = await authorizeAppUserOAuth({
       gatewayBaseUrl: GATEWAY_BASE_URL,
       connectorId: CONNECTOR_ID,
@@ -88,9 +86,7 @@ export const saveGmailConnection = createServerFn({ method: "POST" })
     z.object({ connectionAPIKey: z.string().min(1) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { saveConnectionKeyForUser } = await import(
-      "@/lib/appUserConnections.server"
-    );
+    const { saveConnectionKeyForUser } = await import("@/lib/appUserConnections.server");
     await saveConnectionKeyForUser(context.userId, CONNECTOR_ID, data.connectionAPIKey);
     return { ok: true };
   });
@@ -99,14 +95,10 @@ export const saveGmailConnection = createServerFn({ method: "POST" })
 export const getGmailStatus = createServerFn({ method: "GET" })
   .middleware([requireTeamMember])
   .handler(async ({ context }) => {
-    const { getConnectionKeyForUser } = await import(
-      "@/lib/appUserConnections.server"
-    );
+    const { getConnectionKeyForUser } = await import("@/lib/appUserConnections.server");
     const key = await getConnectionKeyForUser(context.userId, CONNECTOR_ID);
     if (!key) return { connected: false as const, email: null as string | null };
-    const { callAsAppUser } = await import(
-      "@/integrations/lovable/appUserConnector"
-    );
+    const { callAsAppUser } = await import("@/integrations/lovable/appUserConnector");
     const res = await callAsAppUser({
       gatewayBaseUrl: GATEWAY_BASE_URL,
       connectionAPIKey: key,
@@ -126,15 +118,12 @@ export const getGmailStatus = createServerFn({ method: "GET" })
 export const disconnectGmail = createServerFn({ method: "POST" })
   .middleware([requireTeamMember])
   .handler(async ({ context }) => {
-    const { getConnectionKeyForUser, deleteConnectionForUser } = await import(
-      "@/lib/appUserConnections.server"
-    );
+    const { getConnectionKeyForUser, deleteConnectionForUser } =
+      await import("@/lib/appUserConnections.server");
     const key = await getConnectionKeyForUser(context.userId, CONNECTOR_ID);
     if (key) {
       try {
-        const { disconnectAppUser } = await import(
-          "@/integrations/lovable/appUserConnector"
-        );
+        const { disconnectAppUser } = await import("@/integrations/lovable/appUserConnector");
         await disconnectAppUser({
           gatewayBaseUrl: GATEWAY_BASE_URL,
           connectionAPIKey: key,
@@ -169,14 +158,10 @@ export const listRecentGmail = createServerFn({ method: "GET" })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }): Promise<GmailListItem[]> => {
-    const { getConnectionKeyForUser } = await import(
-      "@/lib/appUserConnections.server"
-    );
+    const { getConnectionKeyForUser } = await import("@/lib/appUserConnections.server");
     const key = await getConnectionKeyForUser(context.userId, CONNECTOR_ID);
     if (!key) throw new Error("Gmail is not connected");
-    const { callAsAppUser } = await import(
-      "@/integrations/lovable/appUserConnector"
-    );
+    const { callAsAppUser } = await import("@/integrations/lovable/appUserConnector");
 
     const listRes = await callAsAppUser({
       gatewayBaseUrl: GATEWAY_BASE_URL,
@@ -257,14 +242,10 @@ export const fetchGmailMessage = createServerFn({ method: "POST" })
     z.object({ messageId: z.string().min(1).max(128) }).parse(input),
   )
   .handler(async ({ data, context }): Promise<GmailMessage> => {
-    const { getConnectionKeyForUser } = await import(
-      "@/lib/appUserConnections.server"
-    );
+    const { getConnectionKeyForUser } = await import("@/lib/appUserConnections.server");
     const key = await getConnectionKeyForUser(context.userId, CONNECTOR_ID);
     if (!key) throw new Error("Gmail is not connected");
-    const { callAsAppUser } = await import(
-      "@/integrations/lovable/appUserConnector"
-    );
+    const { callAsAppUser } = await import("@/integrations/lovable/appUserConnector");
 
     const res = await callAsAppUser({
       gatewayBaseUrl: GATEWAY_BASE_URL,
@@ -360,7 +341,11 @@ function formatGmailGatewayError(prefix: string, status: number, body: string): 
   if (/insufficient authentication scopes/i.test(body)) {
     return `${prefix} (${status}): Gmail read permission was not granted. Disconnect Gmail, connect again, and approve read-only Gmail access.`;
   }
-  if (/accessNotConfigured|has not been used in project|it is disabled|API has not been used/i.test(body)) {
+  if (
+    /accessNotConfigured|has not been used in project|it is disabled|API has not been used/i.test(
+      body,
+    )
+  ) {
     return `${prefix} (${status}): Gmail API is not enabled on the Google OAuth project. Enable the Gmail API in Google Cloud, then refresh.`;
   }
   if (status === 401 || /invalid.?credentials|unauthorized/i.test(body)) {
