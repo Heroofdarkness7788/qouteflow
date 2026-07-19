@@ -152,8 +152,8 @@ export const listRecentGmail = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        query: z.string().max(200).default("is:unread newer_than:30d"),
-        max: z.number().int().min(1).max(50).default(15),
+        query: z.string().max(500).default("in:anywhere -in:spam -in:trash -in:chats newer_than:60d"),
+        max: z.number().int().min(1).max(100).default(40),
       })
       .parse(input ?? {}),
   )
