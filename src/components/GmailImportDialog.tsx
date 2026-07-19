@@ -193,7 +193,7 @@ export function GmailImportDialog({
             <div className="max-h-[60vh] overflow-y-auto rounded-md border">
               {messages.length === 0 ? (
                 <p className="p-8 text-center text-sm text-muted-foreground">
-                  No unread emails in the last 30 days.
+                  No matching emails in the last 60 days.
                 </p>
               ) : (
                 <ul className="divide-y">
