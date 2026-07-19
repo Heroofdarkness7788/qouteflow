@@ -54,7 +54,13 @@ export function GmailImportDialog({
     }
     setLoading(true);
     try {
-      const rows = await list({ data: { query: "is:unread newer_than:30d", max: 15 } });
+      const rows = await list({
+        data: {
+          query:
+            "in:anywhere -in:spam -in:trash -in:chats newer_than:60d (has:attachment OR subject:(quote OR quotation OR rfq OR order OR inquiry OR enquiry OR pricing OR price))",
+          max: 40,
+        },
+      });
       setMessages(rows);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load emails");
@@ -187,7 +193,7 @@ export function GmailImportDialog({
             <div className="max-h-[60vh] overflow-y-auto rounded-md border">
               {messages.length === 0 ? (
                 <p className="p-8 text-center text-sm text-muted-foreground">
-                  No unread emails in the last 30 days.
+                  No matching emails in the last 60 days.
                 </p>
               ) : (
                 <ul className="divide-y">
